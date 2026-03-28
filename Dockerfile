@@ -19,4 +19,4 @@ EXPOSE 8080
 
 # O Render passará a porta pela variável $PORT,
 # mas o Java rodará o JAR independente disso.
-CMD ["java", "-jar", "app.jar"]
+CMD ["java", "-jar", "app.jar", "com.example.MainKt"]

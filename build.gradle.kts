@@ -29,7 +29,7 @@ dependencies {
 
 // Configuração da aplicação
 application {
-    mainClass.set("org.example.MainKt")
+    mainClass.set("com.example.MainKt")
 }
 
 // Configuração do ShadowJar (Gera o arquivo único para o Docker)
