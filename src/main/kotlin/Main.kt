@@ -43,6 +43,7 @@ fun main() {
 
 // FUNÇÃO DE CONEXÃO (Ajuste os dados conforme seu banco online)
 fun validarNoBanco(email: String, senha: String): Boolean {
+    Class.forName("com.mysql.cj.jdbc.Driver")
     // Exemplo para MySQL (Se for outro banco, a URL muda)
     val url = "jdbc:mysql://www.thyagoquintas.com.br:3306/engenharia_339"
     val user = "engenharia_339"
@@ -52,7 +53,7 @@ fun validarNoBanco(email: String, senha: String): Boolean {
         // 1. Conecta ao banco
         DriverManager.getConnection(url, user, password).use { conn ->
             // 2. Prepara a Query (Protege contra SQL Injection)
-            val sql = "SELECT * FROM usuarios WHERE email = ? AND senha = ?"
+            val sql = "SELECT * FROM USUARIO WHERE USUARIO_EMAIL = ? AND USUARIO_SENHA = ?"
             val statement = conn.prepareStatement(sql)
             statement.setString(1, email)
             statement.setString(2, senha)
