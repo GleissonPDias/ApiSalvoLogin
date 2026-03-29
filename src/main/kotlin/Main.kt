@@ -9,10 +9,21 @@ import io.ktor.server.routing.*
 import io.ktor.serialization.gson.*
 import io.ktor.server.plugins.contentnegotiation.*
 import io.ktor.http.*
+import org.mindrot.jbcrypt.BCrypt
 import java.sql.DriverManager
 
-// Modelos
+// ==========================================
+// 1. ADICIONAMOS O CAMPO 'ROLE' NO PEDIDO
+// ==========================================
 data class LoginRequest(val email: String, val password: String)
+data class RegisterRequest(
+    val nome: String,
+    val email: String,
+    val cpf: String,
+    val password: String,
+    val telefone: String = "Não informado",
+    val role: String // O Android vai mandar "cliente" ou "prestador" aqui
+)
 data class AuthResponse(val sucesso: Boolean, val mensagem: String)
 
 fun main() {
@@ -27,22 +38,31 @@ fun main() {
             post("/login") {
                 try {
                     val pedido = call.receive<LoginRequest>()
-
-                    println("==== 1. REQUISIÇÃO RECEBIDA DO ANDROID ====")
-                    println("Email recebido: '${pedido.email}'")
-                    println("Senha recebida: '${pedido.password}'")
-
-                    // Agora a função retorna o AuthResponse completo (com o erro real, se houver)
                     val resposta = validarNoBanco(pedido.email, pedido.password)
 
                     if (resposta.sucesso) {
                         call.respond(HttpStatusCode.OK, resposta)
                     } else {
-                        // Enviamos o erro detalhado de volta pro celular
                         call.respond(HttpStatusCode.Unauthorized, resposta)
                     }
                 } catch (e: Exception) {
-                    println("Erro no Ktor: ${e.message}")
+                    call.respond(HttpStatusCode.BadRequest, AuthResponse(false, "Erro na API: ${e.message}"))
+                }
+            }
+
+            post("/cadastro") {
+                try {
+                    val pedido = call.receive<RegisterRequest>()
+                    println("==== TENTATIVA DE CADASTRO: ${pedido.email} como ${pedido.role} ====")
+
+                    val resposta = cadastrarNoBanco(pedido)
+
+                    if (resposta.sucesso) {
+                        call.respond(HttpStatusCode.Created, resposta)
+                    } else {
+                        call.respond(HttpStatusCode.BadRequest, resposta)
+                    }
+                } catch (e: Exception) {
                     call.respond(HttpStatusCode.BadRequest, AuthResponse(false, "Erro na API: ${e.message}"))
                 }
             }
@@ -50,39 +70,78 @@ fun main() {
     }.start(wait = true)
 }
 
-// FUNÇÃO DE CONEXÃO MODIFICADA (Retorna o AuthResponse para podermos ver o erro)
-fun validarNoBanco(email: String, senha: String): AuthResponse {
-    println("==== 2. TENTANDO CONECTAR AO BANCO DE DADOS ====")
+// ==========================================
+// FUNÇÕES DE BANCO DE DADOS (SUPABASE)
+// ==========================================
 
+fun validarNoBanco(email: String, senhaDigitada: String): AuthResponse {
     return try {
-        Class.forName("com.mysql.cj.jdbc.Driver")
-        val url = "jdbc:mysql://www.thyagoquintas.com.br:3306/engenharia_339"
-        val user = "engenharia_339"
-        val password = "capivara"
+        Class.forName("org.postgresql.Driver")
+        val url = "jdbc:postgresql://db.rlifesgqxjgdhulthcnw.supabase.co:5432/postgres"
+        val user = "postgres"
+        val password = "Senacsp@2026"
 
         DriverManager.getConnection(url, user, password).use { conn ->
-            println("==== 3. CONEXÃO BEM-SUCEDIDA! ====")
-
-            val sql = "SELECT * FROM USUARIO WHERE USUARIO_EMAIL = ? AND USUARIO_SENHA = ?"
+            val sql = "SELECT user_password FROM users WHERE user_email = ?"
             val statement = conn.prepareStatement(sql)
             statement.setString(1, email)
-            statement.setString(2, senha)
 
             val resultSet = statement.executeQuery()
 
             if (resultSet.next()) {
-                println("==== 4. USUÁRIO ENCONTRADO! ====")
-                AuthResponse(true, "Login realizado com sucesso!")
+                val hashNoBanco = resultSet.getString("user_password")
+                if (BCrypt.checkpw(senhaDigitada, hashNoBanco)) {
+                    AuthResponse(true, "Login realizado com sucesso!")
+                } else {
+                    AuthResponse(false, "E-mail ou senha incorretos")
+                }
             } else {
-                println("==== 4. USUÁRIO NÃO ENCONTRADO (Dados não batem) ====")
                 AuthResponse(false, "E-mail ou senha incorretos")
             }
         }
     } catch (e: Exception) {
-        println("==== ERRO FATAL NO BANCO ====")
-        e.printStackTrace() // Imprime o erro completo no log do Render
+        AuthResponse(false, "Erro Supabase: ${e.message}")
+    }
+}
 
-        // A MÁGICA: Retorna o erro do MySQL direto para o Android!
-        AuthResponse(false, "Erro MySQL: ${e.message}")
+fun cadastrarNoBanco(usuario: RegisterRequest): AuthResponse {
+    return try {
+        Class.forName("org.postgresql.Driver")
+        val url = "jdbc:postgresql://db.rlifesgqxjgdhulthcnw.supabase.co:5432/postgres"
+        val user = "postgres"
+        val password = "Senacsp@2026"
+
+        DriverManager.getConnection(url, user, password).use { conn ->
+            val senhaHasheada = BCrypt.hashpw(usuario.password, BCrypt.gensalt())
+
+            // ==========================================
+            // 2. LÓGICA DE TRADUÇÃO E SEGURANÇA DO ROLE
+            // ==========================================
+            val roleMapeado = when (usuario.role.lowercase().trim()) {
+                "prestador", "provider", "oficina" -> "provider"
+                "cliente", "customer" -> "customer"
+                else -> "customer" // Se vier algo esquisito ou vazio, vira cliente por segurança
+            }
+
+            // 3. INSERINDO O ROLE NA QUERY
+            val sql = "INSERT INTO users (user_name, user_email, user_password, user_cpf_cnpj, user_phone, user_role) VALUES (?, ?, ?, ?, ?, ?)"
+            val statement = conn.prepareStatement(sql)
+            statement.setString(1, usuario.nome)
+            statement.setString(2, usuario.email)
+            statement.setString(3, senhaHasheada)
+            statement.setString(4, usuario.cpf)
+            statement.setString(5, usuario.telefone)
+            statement.setString(6, roleMapeado) // Adicionando a 6ª variável
+
+            val linhasAfetadas = statement.executeUpdate()
+
+            if (linhasAfetadas > 0) {
+                AuthResponse(true, "Usuário cadastrado com sucesso!")
+            } else {
+                AuthResponse(false, "Falha ao cadastrar usuário.")
+            }
+        }
+    } catch (e: Exception) {
+        AuthResponse(false, "Erro ao cadastrar: ${e.message}")
     }
 }
