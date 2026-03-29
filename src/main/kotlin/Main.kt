@@ -77,8 +77,8 @@ fun main() {
 fun validarNoBanco(email: String, senhaDigitada: String): AuthResponse {
     return try {
         Class.forName("org.postgresql.Driver")
-        val url = "jdbc:postgresql://db.rlifesgqxjgdhulthcnw.supabase.co:5432/postgres"
-        val user = "postgres"
+        val url = "jdbc:postgresql://aws-0-us-west-2.pooler.supabase.com:5432/postgres?sslmode=require"
+        val user = "postgres.rlifesgqxjgdhulthcnw"
         val password = "Senacsp@2026"
 
         DriverManager.getConnection(url, user, password).use { conn ->
@@ -107,8 +107,8 @@ fun validarNoBanco(email: String, senhaDigitada: String): AuthResponse {
 fun cadastrarNoBanco(usuario: RegisterRequest): AuthResponse {
     return try {
         Class.forName("org.postgresql.Driver")
-        val url = "jdbc:postgresql://db.rlifesgqxjgdhulthcnw.supabase.co:5432/postgres"
-        val user = "postgres"
+        val url = "jdbc:postgresql://aws-0-us-west-2.pooler.supabase.com:5432/postgres?sslmode=require"
+        val user = "postgres.rlifesgqxjgdhulthcnw"
         val password = "Senacsp@2026"
 
         DriverManager.getConnection(url, user, password).use { conn ->
