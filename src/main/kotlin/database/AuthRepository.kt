@@ -18,12 +18,11 @@ fun validarNoBanco(email: String, senhaDigitada: String): AuthResponse {
                 val hashNoBanco = resultSet.getString("user_password")
                 if(BCrypt.checkpw(senhaDigitada, hashNoBanco)){
 
-                    val idBanco = resultSet.getInt("id")
+                    val idBanco = resultSet.getInt("user_id")
                     val nomeBanco = resultSet.getString("user_name")
                     val roleBanco = resultSet.getString("user_role")
 
-
-                    AuthResponse(true, "Login realizado com sucesso!")
+                    AuthResponse(true, "Login realizado com sucesso!", idBanco, nomeBanco, roleBanco)
                 }else{
                     AuthResponse(false, "E-mail ou senha incorretos")
                 }
