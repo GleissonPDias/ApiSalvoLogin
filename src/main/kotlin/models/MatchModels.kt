@@ -11,7 +11,7 @@ data class PedidoSocorroRequest(
 
 data class PedidoSocorroResponse(
     val sucesso: Boolean,
-    val message: String,
+    val mensagem: String,
     val requestId: Int? = null,
     val mecanicosNotificados: Int = 0
 )
