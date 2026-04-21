@@ -24,14 +24,14 @@ fun validarNoBanco(email: String, senhaDigitada: String): AuthResponse {
 
                     AuthResponse(true, "Login realizado com sucesso!", idBanco, nomeBanco, roleBanco)
                 }else{
-                    AuthResponse(false, "E-mail ou senha incorretos")
+                    AuthResponse(false, "E-mail ou senha incorretos", null, null, null)
                 }
             } else{
-                AuthResponse(false, "E-mail ou senha incorretos")
+                AuthResponse(false, "E-mail ou senha incorretos", null, null, null)
             }
         }
     } catch (e: Exception) {
-        AuthResponse(false, "Erro Supabase: ${e.message}")
+        AuthResponse(false, "Erro Supabase: ${e.message}", null, null, null)
     }
 }
 
