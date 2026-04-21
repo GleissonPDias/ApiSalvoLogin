@@ -6,7 +6,9 @@ data class RegisterRequest(
     val cpf: String,
     val password: String,
     val telefone: String = "Não informado",
-    val role: String
+    val role: String,
+    val latitude: Double = 0.0,
+    val longitude: Double = 0.0
 )
 
 data class LoginRequest(val email: String, val password: String)

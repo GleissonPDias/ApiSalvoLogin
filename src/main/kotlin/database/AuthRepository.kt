@@ -46,7 +46,7 @@ fun cadastrarNoBanco(usuario: RegisterRequest): AuthResponse {
                 else -> "customer"
             }
 
-            val sql = "INSERT INTO users (user_name, user_email, user_password, user_cpf_cnpj, user_phone, user_role) VALUES (?, ?, ?, ?, ?, ?)"
+            val sql = "INSERT INTO users (user_name, user_email, user_password, user_cpf_cnpj, user_phone, user_role, latitude, longitude) VALUES (?, ?, ?, ?, ?, ?,?,?)"
             val statement = conn.prepareStatement(sql)
             statement.setString(1, usuario.nome)
             statement.setString(2, usuario.email)
@@ -54,6 +54,8 @@ fun cadastrarNoBanco(usuario: RegisterRequest): AuthResponse {
             statement.setString(4, usuario.cpf)
             statement.setString(5, usuario.telefone)
             statement.setString(6, roleMapeado)
+            statement.setDouble(7, usuario.latitude ?: 0.0)
+            statement.setDouble(8, usuario.longitude ?: 0.0)
 
             val linhasAfetadas = statement.executeUpdate()
 
