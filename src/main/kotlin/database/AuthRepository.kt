@@ -8,7 +8,7 @@ import org.mindrot.jbcrypt.BCrypt
 fun validarNoBanco(email: String, senhaDigitada: String): AuthResponse {
     return try{
         DatabaseConfig.getConnection().use { conn ->
-            val sql = "SELECT user_password FROM users WHERE user_email = ?"
+            val sql = "SELECT user_id, user_name, user_role, user_password FROM users WHERE user_email = ?"
             val statement = conn.prepareStatement(sql)
             statement.setString(1, email)
 
@@ -17,6 +17,12 @@ fun validarNoBanco(email: String, senhaDigitada: String): AuthResponse {
             if(resultSet.next()) {
                 val hashNoBanco = resultSet.getString("user_password")
                 if(BCrypt.checkpw(senhaDigitada, hashNoBanco)){
+
+                    val idBanco = resultSet.getInt("id")
+                    val nomeBanco = resultSet.getString("user_name")
+                    val roleBanco = resultSet.getString("user_role")
+
+
                     AuthResponse(true, "Login realizado com sucesso!")
                 }else{
                     AuthResponse(false, "E-mail ou senha incorretos")
