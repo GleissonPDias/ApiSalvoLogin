@@ -2,7 +2,7 @@ package com.example
 
 
 import com.example.routes.authRoutes
-import com.example.routes.pedidoRoutes
+import routes.pedidoRoutes
 import com.example.routes.matchRoutes
 import io.ktor.serialization.gson.*
 import io.ktor.server.application.*
