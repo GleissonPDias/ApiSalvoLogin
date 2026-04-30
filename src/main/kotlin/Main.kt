@@ -3,6 +3,7 @@ package com.example
 
 import com.example.routes.authRoutes
 import com.example.routes.matchRoutes
+import com.example.routes.pedidoRoutes
 import io.ktor.serialization.gson.*
 import io.ktor.server.application.*
 import io.ktor.server.engine.*
@@ -25,6 +26,7 @@ fun main() {
             // Chamando as rotas que foram divididas nas outras pastas
             authRoutes()
             matchRoutes()
+            pedidoRoutes()
 
         }
 

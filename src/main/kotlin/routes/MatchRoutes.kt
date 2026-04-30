@@ -33,7 +33,7 @@ fun Route.matchRoutes() {
 
 
 fun Route.pedidoRoutes() {
-    get("/pedidos") {
+    get("/listar-pedidos") {
         try {
             // Pega o userId dos parâmetros da URL (?userId=1)
             val userId = call.request.queryParameters["userId"]?.toIntOrNull()
