@@ -24,7 +24,7 @@ dependencies {
     implementation("io.ktor:ktor-serialization-gson-jvm:2.3.10")
 
     // Conexão com Banco de Dados MySQL
-    implementation("org.postgresql:postgresql:42.7.3")
+    implementation("mysql:mysql-connector-java:8.0.33")
 
     implementation("org.mindrot:jbcrypt:0.4")
 }

@@ -6,10 +6,10 @@ import java.sql.DriverManager
 
 object DatabaseConfig {
     fun getConnection(): Connection {
-        Class.forName("org.postgresql.Driver")
-        val url = "jdbc:postgresql://aws-0-us-west-2.pooler.supabase.com:5432/postgres?sslmode=require"
-        val user = "postgres.rlifesgqxjgdhulthcnw"
-        val password = "Senacsp@2026"
+        Class.forName("com.mysql.cj.jdbc.Driver")
+        val url = "jdbc:mysql://www.thyagoquintas.com.br:3306/engenharia_339"
+        val user = "engenharia_339"
+        val password = "capivara"
 
         return DriverManager.getConnection(url, user, password)
     }
