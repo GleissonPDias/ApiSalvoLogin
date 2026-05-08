@@ -7,7 +7,7 @@ import java.sql.DriverManager
 object DatabaseConfig {
     fun getConnection(): Connection {
         Class.forName("com.mysql.cj.jdbc.Driver")
-        val url = "jdbc:mysql://www.thyagoquintas.com.br:3306/engenharia_339"
+        val url = "jdbc:mysql://thyagoquintas.com.br:3306/engenharia_339"
         val user = "engenharia_339"
         val password = "capivara"
 
