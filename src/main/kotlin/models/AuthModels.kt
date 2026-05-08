@@ -18,5 +18,10 @@ data class AuthResponse(
     val message: String,
     val userId: Int? = null,
     val nome: String? = null,
+    val service: String? = null,
+    val status: String? = null,
+    val hora_data: String? = null,
+    val preco: Double = 0.0,
+    val prestador: String? = null,
     val role: String? = null
 )
