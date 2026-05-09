@@ -38,6 +38,8 @@ fun Route.authRoutes() {
                 call.respond(HttpStatusCode.BadRequest, resposta)
             }
         } catch (e: Exception) {
+            println("ERRO NO CADASTRO: ${e.message}")
+            e.printStackTrace()
             call.respond(HttpStatusCode.BadRequest, AuthResponse(false, "Erro na API: ${e.message}"))
         }
     }
