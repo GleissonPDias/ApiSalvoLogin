@@ -5,10 +5,15 @@ import com.example.database.atualizarPerfilNoBanco
 import com.example.database.buscarServicosDaOficina
 import com.example.models.AuthResponse
 import io.ktor.http.*
+import io.ktor.http.ContentDisposition.Companion.File
+import io.ktor.http.content.PartData
+import io.ktor.http.content.forEachPart
+import io.ktor.http.content.streamProvider
 import io.ktor.server.application.*
 import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
+import java.io.File
 
 fun Route.perfilRoutes() {
 
@@ -57,5 +62,31 @@ fun Route.perfilRoutes() {
         val servicos = buscarServicosDaOficina(id)
         call.respond(HttpStatusCode.OK, servicos)
     }
+
+    post("/atualizar-banner/{id}") {
+        val id = call.parameters["id"]?.toIntOrNull() ?: return@post call.respond(HttpStatusCode.BadRequest)
+        val multipart = call.receiveMultipart()
+        var fileName = ""
+
+        multipart.forEachPart { part ->
+            if (part is PartData.FileItem) {
+                val fileBytes = part.streamProvider().readBytes()
+                // Define o nome do arquivo (ex: banner_5.jpg)
+                fileName = "banner_$id.jpg"
+
+                // Salva o arquivo na pasta 'uploads' do seu servidor
+                File("uploads/$fileName").writeBytes(fileBytes)
+            }
+            part.dispose()
+        }
+
+        // Agora salva o CAMINHO da imagem no banco de dados
+        val urlImagem = "https://sua-api.com/uploads/$fileName"
+        val sucesso = atualizarPerfilNoBanco(id, mapOf("user_banner" to urlImagem))
+
+        if (sucesso) call.respond(HttpStatusCode.OK, "Banner atualizado!")
+        else call.respond(HttpStatusCode.InternalServerError)
+    }
+
 }
 
