@@ -39,7 +39,7 @@ fun buscarServicosDaOficina(providerId: Int): List<ProviderServiceResponse> {
                                 service_type = rs.getString("service_type"),
                                 base_price = rs.getDouble("base_price"),
                                 price_per_km = rs.getDouble("price_per_km"),
-                                is_active = rs.getInt("is_active") == 1
+                                is_active = rs.getString("is_active") == "1" || rs.getString("is_active") == "true"
                             )
                         )
                     }
