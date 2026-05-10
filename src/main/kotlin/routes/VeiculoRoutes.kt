@@ -79,5 +79,26 @@ fun Route.veiculoRoutes() {
             call.respond(HttpStatusCode.InternalServerError, mapOf("sucesso" to false, "mensagem" to "Erro ao excluir veículo"))
         }
     }
+
+    put("/atualizar-veiculo/{id}") {
+        val id = call.parameters["id"]?.toIntOrNull()
+        val campos = call.receive<Map<String, String?>>()
+        val providerId = campos["provider_id"]?.toIntOrNull()
+        val name = campos["name"]
+        val plate = campos["plate"]
+        val photoBase64 = campos["vehicle_photo"]
+
+        if (id == null || providerId == null || name.isNullOrBlank() || plate.isNullOrBlank()) {
+            call.respond(HttpStatusCode.BadRequest, mapOf("sucesso" to false, "mensagem" to "Dados incompletos"))
+            return@put
+        }
+
+        val sucesso = atualizarDadosVeiculoNoBanco(id, providerId, name, plate, photoBase64)
+        if (sucesso) {
+            call.respond(HttpStatusCode.OK, mapOf("sucesso" to true, "mensagem" to "Veículo atualizado!"))
+        } else {
+            call.respond(HttpStatusCode.InternalServerError, mapOf("sucesso" to false, "mensagem" to "Erro ao atualizar"))
+        }
+    }
 }
 

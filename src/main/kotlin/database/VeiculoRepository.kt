@@ -89,3 +89,34 @@ fun excluirVeiculoNoBanco(id: Int, providerId: Int): Boolean {
         false
     }
 }
+
+fun atualizarDadosVeiculoNoBanco(id: Int, providerId: Int, name: String, plate: String, photoBase64: String?): Boolean {
+    return try {
+        DatabaseConfig.getConnection().use { conn ->
+            // Se veio foto nova, atualiza tudo. Se não veio, atualiza só nome e placa.
+            val sql = if (!photoBase64.isNullOrBlank()) {
+                "UPDATE provider_vehicles SET name = ?, plate = ?, vehicle_photo = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND provider_id = ?"
+            } else {
+                "UPDATE provider_vehicles SET name = ?, plate = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND provider_id = ?"
+            }
+
+            conn.prepareStatement(sql).use { stmt ->
+                stmt.setString(1, name)
+                stmt.setString(2, plate)
+
+                if (!photoBase64.isNullOrBlank()) {
+                    stmt.setString(3, photoBase64)
+                    stmt.setInt(4, id)
+                    stmt.setInt(5, providerId)
+                } else {
+                    stmt.setInt(3, id)
+                    stmt.setInt(4, providerId)
+                }
+                stmt.executeUpdate() > 0
+            }
+        }
+    } catch (e: Exception) {
+        println("Erro atualizarDadosVeiculo: ${e.message}")
+        false
+    }
+}
