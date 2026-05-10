@@ -55,12 +55,17 @@ fun Route.perfilRoutes() {
     get("/servicos-oficina/{id}") {
         val id = call.parameters["id"]?.toIntOrNull()
         if (id == null) {
-            call.respond(HttpStatusCode.BadRequest, "ID inválido")
+            call.respond(HttpStatusCode.BadRequest, mapOf("erro" to "ID inválido"))
             return@get
         }
 
-        val servicos = buscarServicosDaOficina(id)
-        call.respond(HttpStatusCode.OK, servicos)
+        // 1. Busca a lista centralizada usando a função do ServicoRepository
+        val todosServicos = buscarServicosDaOficina(id)
+
+        // 2. Para a tela de perfil público, filtramos e devolvemos apenas os que estão Ativos (1)
+        val servicosAtivos = todosServicos.filter { it.is_active }
+
+        call.respond(HttpStatusCode.OK, servicosAtivos)
     }
 
     post("/atualizar-banner/{id}") {

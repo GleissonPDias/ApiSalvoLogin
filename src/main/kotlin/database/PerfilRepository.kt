@@ -89,30 +89,3 @@ fun buscarPerfilNoBanco(id: Int): Map<String, Any?>? {
     }
 }
 
-fun buscarServicosDaOficina(providerId: Int): List<ProviderServiceResponse> {
-    val lista = mutableListOf<ProviderServiceResponse>()
-    return try {
-        DatabaseConfig.getConnection().use { conn ->
-            val sql = "SELECT id, service_type, base_price, price_per_km, is_active FROM provider_services WHERE provider_id = ? AND is_active = 1"
-            val stmt = conn.prepareStatement(sql)
-            stmt.setInt(1, providerId)
-            val rs = stmt.executeQuery()
-
-            while (rs.next()) {
-                lista.add(
-                    ProviderServiceResponse(
-                        id = rs.getInt("id"),
-                        service_type = rs.getString("service_type"),
-                        base_price = rs.getDouble("base_price"),
-                        price_per_km = rs.getDouble("price_per_km"),
-                        is_active = rs.getBoolean("is_active")
-                    )
-                )
-            }
-            lista
-        }
-    } catch (e: Exception) {
-        println("Erro buscarServicos: ${e.message}")
-        emptyList()
-    }
-}

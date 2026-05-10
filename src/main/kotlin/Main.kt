@@ -5,6 +5,7 @@ import com.example.routes.authRoutes
 import com.example.routes.matchRoutes
 import com.example.routes.pedidoRoutes
 import com.example.routes.perfilRoutes
+import com.example.routes.servicoRoutes
 import com.example.routes.veiculoRoutes
 import io.ktor.serialization.gson.*
 import io.ktor.server.application.*
@@ -31,6 +32,7 @@ fun main() {
             pedidoRoutes()
             perfilRoutes()
             veiculoRoutes()
+            servicoRoutes()
 
         }
 
