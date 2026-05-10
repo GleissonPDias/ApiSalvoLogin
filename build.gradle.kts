@@ -27,6 +27,11 @@ dependencies {
     implementation("mysql:mysql-connector-java:8.0.33")
 
     implementation("org.mindrot:jbcrypt:0.4")
+
+    implementation("ch.qos.logback:logback-classic:1.4.14")
+
+
+
 }
 
 // Configuração da aplicação
