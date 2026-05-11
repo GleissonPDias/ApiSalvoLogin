@@ -52,7 +52,7 @@ fun Route.perfilRoutes() {
         }
     }
 
-    get("/servicos-oficina/{id}") {
+    get("/servicos-publicos/{id}") {
         val id = call.parameters["id"]?.toIntOrNull()
         if (id == null) {
             call.respond(HttpStatusCode.BadRequest, mapOf("erro" to "ID inválido"))
