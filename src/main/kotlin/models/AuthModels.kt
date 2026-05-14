@@ -25,3 +25,7 @@ data class AuthResponse(
     val prestador: String? = null,
     val role: String? = null
 )
+
+data class ResetPasswordRequest(val email: String)
+
+data class GenericResponse(val sucesso: Boolean, val mensagem: String)
