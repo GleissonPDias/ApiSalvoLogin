@@ -23,7 +23,13 @@ fun validarNoBanco(email: String, senhaDigitada: String): AuthResponse {
                     val nomeBanco = resultSet.getString("user_name")
                     val roleBanco = resultSet.getString("user_role")
 
-                    AuthResponse(true, "Login realizado com sucesso!", idBanco, nomeBanco, roleBanco)
+                    AuthResponse(
+                        sucesso = true,
+                        message = "Login realizado com sucesso!",
+                        userId = idBanco,
+                        nome = nomeBanco,
+                        role = roleBanco
+                    )
                 }else{
                     AuthResponse(false, "E-mail ou senha incorretos", null, null, null)
                 }
