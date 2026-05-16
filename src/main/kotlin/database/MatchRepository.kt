@@ -2,6 +2,7 @@ package com.example.database
 
 import com.example.models.PedidoSocorroRequest
 import com.example.models.PedidoSocorroResponse
+import java.sql.Statement // IMPORTANTE: Necessário para o RETURN_GENERATED_KEYS no MySQL
 
 fun solicitarSocorroRadar(pedido: PedidoSocorroRequest): PedidoSocorroResponse {
     return try {
@@ -11,22 +12,37 @@ fun solicitarSocorroRadar(pedido: PedidoSocorroRequest): PedidoSocorroResponse {
             conn.autoCommit = false
 
             try {
-                // 1. CRIA O PEDIDO
+                // 1. CRIA O PEDIDO (Corrigido)
                 val sqlInsertRequest = """
-                    INSERT INTO service_requests (customer_id, description, location_lat, location_lng, status)
-                    VALUES (?, ?, ?, ?, 'searching') RETURNING id
-                """
-                val stmtRequest = conn.prepareStatement(sqlInsertRequest)
+                    INSERT INTO service_requests (customer_id, vehicle_id, service_type, description, location_lat, location_lng, status)
+                    VALUES (?, ?, ?, ?, ?, ?, 'searching')
+                """.trimIndent()
+
+                // Avisamos o MySQL que queremos capturar o ID (Auto Increment) gerado
+                val stmtRequest = conn.prepareStatement(sqlInsertRequest, Statement.RETURN_GENERATED_KEYS)
+
                 stmtRequest.setInt(1, pedido.customerId)
-                stmtRequest.setString(2, pedido.description)
-                stmtRequest.setDouble(3, pedido.latitude)
-                stmtRequest.setDouble(4, pedido.longitude)
+                stmtRequest.setInt(2, pedido.vehicleId)      // Correção: Faltava passar o ID do veículo!
+                stmtRequest.setString(3, pedido.serviceType) // Correção: Faltava passar o tipo do serviço!
+                stmtRequest.setString(4, pedido.description)
+                stmtRequest.setDouble(5, pedido.latitude)
+                stmtRequest.setDouble(6, pedido.longitude)
 
-                val rsRequest = stmtRequest.executeQuery()
-                rsRequest.next()
-                val novoRequestId = rsRequest.getInt("id")
+                // Usamos executeUpdate() para operações INSERT/UPDATE/DELETE
+                stmtRequest.executeUpdate()
 
-                // 2. O RADAR POSTGIS
+                // Captura o ID gerado pelo MySQL
+                val rsRequest = stmtRequest.generatedKeys
+                var novoRequestId = -1
+                if (rsRequest.next()) {
+                    novoRequestId = rsRequest.getInt(1)
+                }
+
+                if (novoRequestId == -1) {
+                    throw Exception("Falha ao gerar o ID do pedido no MySQL.")
+                }
+
+                // 2. O RADAR (Adaptado para MySQL Espacial)
                 val sqlRadar = """
                     SELECT u.user_id 
                     FROM users u
@@ -36,14 +52,13 @@ fun solicitarSocorroRadar(pedido: PedidoSocorroRequest): PedidoSocorroResponse {
                       AND prof.is_receiving_requests = TRUE
                       AND ps.service_type = ? 
                       AND ps.is_active = TRUE
-                      AND ST_DWithin(
-                          geography(ST_MakePoint(u.longitude, u.latitude)), 
-                          geography(ST_MakePoint(?, ?)), 
-                          ? 
-                      )
-                """
+                      -- Substituímos o PostGIS pelo ST_Distance_Sphere do MySQL
+                      AND ST_Distance_Sphere(POINT(u.longitude, u.latitude), POINT(?, ?)) <= ?
+                """.trimIndent()
+
                 val stmtRadar = conn.prepareStatement(sqlRadar)
                 stmtRadar.setString(1, pedido.serviceType)
+                // Lembrete: O POINT no MySQL recebe primeiro a Longitude (X), depois a Latitude (Y)
                 stmtRadar.setDouble(2, pedido.longitude)
                 stmtRadar.setDouble(3, pedido.latitude)
                 stmtRadar.setDouble(4, raioBuscaMetros)

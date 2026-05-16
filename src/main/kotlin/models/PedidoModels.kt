@@ -14,3 +14,19 @@ data class PedidosResponse(
     val destino_address: String?,
     val created_at: String
 )
+
+data class PedidoPendenteResponse(
+    val matchId: Int, // ID do convite na tabela service_matches
+    val requestId: Int,
+    val serviceType: String,
+    val description: String,
+    val latitude: Double,
+    val longitude: Double,
+    val clienteNome: String,
+    val clienteTelefone: String,
+    // Dados do Veículo que vieram do JOIN:
+    val veiculoMarca: String,
+    val veiculoModelo: String,
+    val veiculoPlaca: String,
+    val veiculoAno: String
+)
