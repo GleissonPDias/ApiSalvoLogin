@@ -23,7 +23,7 @@ data class AuthResponse(
     val hora_data: String? = null,
     val preco: Double = 0.0,
     val prestador: String? = null,
-    val role: String
+    val role: String = ""
 )
 
 data class ResetPasswordRequest(val email: String)
