@@ -14,7 +14,7 @@ fun atualizarPerfilNoBanco(userId: Int, campos: Map<String, String>): Boolean {
             if (!rs.next()) return false
             val role = rs.getString("user_role").lowercase()
 
-            // 2. Colunas permitidas (AJUSTADO PARA OS ROLES REAIS)
+            // 2. Colunas permitidas (Mantido igual ao seu original)
             val colunasPermitidas = when (role) {
                 "provider", "oficina" -> listOf(
                     "user_name", "user_cpf_cnpj", "user_address",
@@ -24,20 +24,28 @@ fun atualizarPerfilNoBanco(userId: Int, campos: Map<String, String>): Boolean {
                 else -> emptyList()
             }
 
-            // 3. Verifica permissão
-            val campoParaAtualizar = campos.keys.firstOrNull { it in colunasPermitidas }
+            // 3. Filtra TODOS os campos permitidos que vieram na requisição
+            val camposValidos = campos.filterKeys { it in colunasPermitidas }
 
-            if (campoParaAtualizar == null) {
-                println("Campo não permitido ou não autorizado para o role: $role")
+            if (camposValidos.isEmpty()) {
+                println("Nenhum campo válido ou autorizado para atualizar no role: $role")
                 return false
             }
 
-            // 4. Executa o Update
-            val sqlUpdate = "UPDATE users SET $campoParaAtualizar = ?, updated_at = CURRENT_TIMESTAMP WHERE user_id = ?"
+            // 4. Monta a Query Dinâmica (Ex: "user_address = ?, latitude = ?, longitude = ?")
+            val colunasSql = camposValidos.keys.joinToString(", ") { "$it = ?" }
+            val sqlUpdate = "UPDATE users SET $colunasSql, updated_at = CURRENT_TIMESTAMP WHERE user_id = ?"
+
             val statement = conn.prepareStatement(sqlUpdate)
 
-            statement.setString(1, campos[campoParaAtualizar])
-            statement.setInt(2, userId)
+            // 5. Preenche os '?' com os valores correspondentes
+            var index = 1
+            for (valor in camposValidos.values) {
+                statement.setString(index, valor)
+                index++
+            }
+            // O último '?' é sempre o ID do usuário
+            statement.setInt(index, userId)
 
             statement.executeUpdate() > 0
         }
@@ -107,3 +115,4 @@ fun atualizarStatusOnline(providerId: Int, isOnline: Boolean): Boolean {
         false
     }
 }
+
