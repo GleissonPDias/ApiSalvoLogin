@@ -24,7 +24,7 @@ fun buscarPedidos(userId: Int): List<PedidosResponse> {
                     sr.status, 
                     sr.assigned_provider_id, 
                     u.user_name AS prestador_nome,
-                    pp.cover_photo_url AS prestador_foto, -- Tabela provider_profiles
+                    u.user_banner AS prestador_foto, -- Tabela provider_profiles
                     pv.name AS veiculo_prestador_nome,   -- Tabela provider_vehicles
                     pv.plate AS veiculo_prestador_placa, -- Tabela provider_vehicles
                     sr.final_price, 
