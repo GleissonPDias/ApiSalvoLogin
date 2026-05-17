@@ -7,14 +7,17 @@ fun buscarPedidos(userId: Int): List<PedidosResponse> {
     val listaPedidos = mutableListOf<PedidosResponse>()
     return try {
         DatabaseConfig.getConnection().use { conn ->
-            // Query buscando da tabela nova e fazendo JOIN para pegar o nome do prestador
+            // Query atualizada: lendo vehicle_id e fazendo JOIN com customer_vehicles
             val sql = """
                 SELECT 
                     sr.id, 
                     sr.customer_id, 
                     sr.service_type, 
                     sr.description, 
-                    sr.vehicle_info, 
+                    sr.vehicle_id, 
+                    cv.brand,
+                    cv.model,
+                    cv.plate,
                     sr.status, 
                     sr.assigned_provider_id, 
                     u.user_name AS prestador_nome,
@@ -24,6 +27,7 @@ fun buscarPedidos(userId: Int): List<PedidosResponse> {
                     sr.created_at
                 FROM service_requests sr
                 LEFT JOIN users u ON sr.assigned_provider_id = u.user_id
+                LEFT JOIN customer_vehicles cv ON sr.vehicle_id = cv.id
                 WHERE sr.customer_id = ?
                 ORDER BY sr.created_at DESC
             """.trimIndent()
@@ -33,16 +37,24 @@ fun buscarPedidos(userId: Int): List<PedidosResponse> {
             val rs = statement.executeQuery()
 
             while (rs.next()) {
-                // Leitura segura de inteiros que podem ser nulos
                 val providerId = rs.getInt("assigned_provider_id")
                 val assignedProviderIdSafe = if (rs.wasNull()) null else providerId
 
-                // Leitura segura de decimais/doubles que podem ser nulos
                 val price = rs.getDouble("final_price")
                 val finalPriceSafe = if (rs.wasNull()) null else price
 
                 val distance = rs.getDouble("final_distance")
                 val finalDistanceSafe = if (rs.wasNull()) null else distance
+
+                // Montando uma string com as informações do veículo para enviar ao frontend
+                val brand = rs.getString("brand") ?: ""
+                val model = rs.getString("model") ?: ""
+                val plate = rs.getString("plate") ?: ""
+                val vehicleInfoFormatted = if (brand.isNotEmpty() && model.isNotEmpty()) {
+                    "$brand $model - $plate"
+                } else {
+                    "Veículo não informado"
+                }
 
                 listaPedidos.add(
                     PedidosResponse(
@@ -50,10 +62,10 @@ fun buscarPedidos(userId: Int): List<PedidosResponse> {
                         customer_id = rs.getInt("customer_id"),
                         service_type = rs.getString("service_type"),
                         description = rs.getString("description"),
-                        vehicle_info = rs.getString("vehicle_info"),
+                        vehicle_info = vehicleInfoFormatted, // <-- Agora envia a string formatada
                         status = rs.getString("status"),
                         assigned_provider_id = assignedProviderIdSafe,
-                        prestador_nome = rs.getString("prestador_nome"), // Vem do JOIN
+                        prestador_nome = rs.getString("prestador_nome"),
                         final_price = finalPriceSafe,
                         final_distance = finalDistanceSafe,
                         destino_address = rs.getString("destino_address"),
@@ -67,16 +79,14 @@ fun buscarPedidos(userId: Int): List<PedidosResponse> {
         println("Erro ao buscar pedidos: ${e.message}")
         emptyList()
     }
-
-
 }
 
 fun buscarPedidosDoPrestador(providerId: Int): List<PedidoPendenteResponse> {
+    // ... (Esta função está perfeita e não precisa de alterações)
     val listaPedidos = mutableListOf<PedidoPendenteResponse>()
 
     return try {
         DatabaseConfig.getConnection().use { conn ->
-            // Aqui está a mágica do JOIN puxando cliente e veículo de uma vez só!
             val sql = """
                 SELECT 
                     sm.id AS match_id,
@@ -99,7 +109,7 @@ fun buscarPedidosDoPrestador(providerId: Int): List<PedidoPendenteResponse> {
             """.trimIndent()
 
             val stmt = conn.prepareStatement(sql)
-            stmt.setInt(1, providerId) // Filtra apenas os pedidos 'pending' deste mecânico
+            stmt.setInt(1, providerId)
 
             val rs = stmt.executeQuery()
 
@@ -125,7 +135,6 @@ fun buscarPedidosDoPrestador(providerId: Int): List<PedidoPendenteResponse> {
         listaPedidos
     } catch (e: Exception) {
         println("Erro ao buscar pedidos do prestador: ${e.message}")
-        emptyList() // Retorna lista vazia em caso de erro
+        emptyList()
     }
-
 }
