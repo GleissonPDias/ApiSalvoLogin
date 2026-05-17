@@ -10,6 +10,7 @@ fun buscarPedidos(userId: Int): List<PedidosResponse> {
     val listaPedidos = mutableListOf<PedidosResponse>()
     return try {
         DatabaseConfig.getConnection().use { conn ->
+            // Query atualizada trazendo foto de perfil e dados do guincho
             val sql = """
                 SELECT 
                     sr.id, 
@@ -23,6 +24,9 @@ fun buscarPedidos(userId: Int): List<PedidosResponse> {
                     sr.status, 
                     sr.assigned_provider_id, 
                     u.user_name AS prestador_nome,
+                    pp.cover_photo_url AS prestador_foto, -- Tabela provider_profiles
+                    pv.name AS veiculo_prestador_nome,   -- Tabela provider_vehicles
+                    pv.plate AS veiculo_prestador_placa, -- Tabela provider_vehicles
                     sr.final_price, 
                     sr.final_distance, 
                     sr.destino_address, 
@@ -30,6 +34,8 @@ fun buscarPedidos(userId: Int): List<PedidosResponse> {
                 FROM service_requests sr
                 LEFT JOIN users u ON sr.assigned_provider_id = u.user_id
                 LEFT JOIN customer_vehicles cv ON sr.vehicle_id = cv.id
+                LEFT JOIN provider_profiles pp ON sr.assigned_provider_id = pp.provider_id
+                LEFT JOIN provider_vehicles pv ON sr.assigned_provider_id = pv.provider_id AND pv.is_active = 1
                 WHERE sr.customer_id = ?
                 ORDER BY sr.created_at DESC
             """.trimIndent()
@@ -70,14 +76,18 @@ fun buscarPedidos(userId: Int): List<PedidosResponse> {
                         final_price = finalPriceSafe,
                         final_distance = finalDistanceSafe,
                         destino_address = rs.getString("destino_address"),
-                        created_at = rs.getString("created_at") ?: ""
+                        created_at = rs.getString("created_at") ?: "",
+                        // 🚀 MAPEAMENTO DOS NOVOS CAMPOS:
+                        prestador_foto = rs.getString("prestador_foto"),
+                        veiculo_prestador_nome = rs.getString("veiculo_prestador_nome"),
+                        veiculo_prestador_placa = rs.getString("veiculo_prestador_placa")
                     )
                 )
             }
             listaPedidos
         }
     } catch (e: Exception) {
-        println("Erro ao buscar pedidos: ${e.message}")
+        println("Erro ao buscar pedidos com dados extras: ${e.message}")
         emptyList()
     }
 }

@@ -12,7 +12,10 @@ data class PedidosResponse(
     val final_price: Double?,
     val final_distance: Double?,
     val destino_address: String?,
-    val created_at: String
+    val created_at: String,
+    val prestador_foto: String? = null,
+    val veiculo_prestador_nome: String? = null,
+    val veiculo_prestador_placa: String? = null
 )
 
 data class PedidoPendenteResponse(
