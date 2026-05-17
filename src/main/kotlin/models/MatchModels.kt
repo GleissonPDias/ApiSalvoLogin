@@ -13,5 +13,6 @@ data class PedidoSocorroResponse(
     val sucesso: Boolean,
     val mensagem: String,
     val requestId: Int? = null,
-    val mecanicosNotificados: Int = 0
+    val mecanicosNotificados: Int = 0,
+    val idsPrestadores: List<Int>? = null
 )

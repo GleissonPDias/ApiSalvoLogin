@@ -22,8 +22,8 @@ fun solicitarSocorroRadar(pedido: PedidoSocorroRequest): PedidoSocorroResponse {
                 val stmtRequest = conn.prepareStatement(sqlInsertRequest, Statement.RETURN_GENERATED_KEYS)
 
                 stmtRequest.setInt(1, pedido.customerId)
-                stmtRequest.setInt(2, pedido.vehicleId)      // Correção: Faltava passar o ID do veículo!
-                stmtRequest.setString(3, pedido.serviceType) // Correção: Faltava passar o tipo do serviço!
+                stmtRequest.setInt(2, pedido.vehicleId)
+                stmtRequest.setString(3, pedido.serviceType)
                 stmtRequest.setString(4, pedido.description)
                 stmtRequest.setDouble(5, pedido.latitude)
                 stmtRequest.setDouble(6, pedido.longitude)
@@ -85,7 +85,14 @@ fun solicitarSocorroRadar(pedido: PedidoSocorroRequest): PedidoSocorroResponse {
 
                 conn.commit()
 
-                PedidoSocorroResponse(true, "Pedido criado! Procurando socorro...", novoRequestId, oficinasEncontradas.size)
+                // MODIFICAÇÃO: Incluído o parâmetro idsPrestadores recebendo a lista do Radar
+                return PedidoSocorroResponse(
+                    sucesso = true,
+                    mensagem = "Pedido criado! Procurando socorro...",
+                    requestId = novoRequestId,
+                    mecanicosNotificados = oficinasEncontradas.size,
+                    idsPrestadores = oficinasEncontradas
+                )
 
             } catch (e: Exception) {
                 conn.rollback()
@@ -93,6 +100,12 @@ fun solicitarSocorroRadar(pedido: PedidoSocorroRequest): PedidoSocorroResponse {
             }
         }
     } catch (e: Exception) {
-        PedidoSocorroResponse(false, "Erro no Radar: ${e.message}")
+        return PedidoSocorroResponse(
+            sucesso = false,
+            mensagem = "Erro no Radar: ${e.message}",
+            requestId = null,
+            mecanicosNotificados = 0,
+            idsPrestadores = null
+        )
     }
 }
