@@ -1,5 +1,6 @@
 package com.example.routes
 
+import com.example.database.buscarHistoricoDaOficina
 import com.example.database.buscarPedidos
 import com.example.database.verificarStatusDoPedidoBanco // <-- NÃO ESQUEÇA DESTE IMPORT
 import io.ktor.http.HttpStatusCode
@@ -39,6 +40,15 @@ fun Route.pedidoRoutes() {
             call.respond(HttpStatusCode.OK, statusAtualizado)
         } else {
             call.respond(HttpStatusCode.BadRequest, mapOf("erro" to "ID inválido"))
+        }
+    }
+    get("/listar-pedidos-oficina") {
+        val providerId = call.request.queryParameters["providerId"]?.toIntOrNull()
+        if (providerId != null) {
+            val pedidos = buscarHistoricoDaOficina(providerId)
+            call.respond(pedidos)
+        } else {
+            call.respond(HttpStatusCode.BadRequest, "ID do prestador ausente.")
         }
     }
 }

@@ -149,6 +149,90 @@ fun buscarPedidosDoPrestador(providerId: Int): List<PedidoPendenteResponse> {
     }
 }
 
+fun buscarHistoricoDaOficina(providerId: Int): List<PedidosResponse> {
+    val listaPedidos = mutableListOf<PedidosResponse>()
+    return try {
+        DatabaseConfig.getConnection().use { conn ->
+            val sql = """
+                SELECT 
+                    sr.id, 
+                    sr.customer_id, 
+                    sr.service_type, 
+                    sr.description, 
+                    sr.vehicle_id, 
+                    cv.brand,
+                    cv.model,
+                    cv.plate,
+                    sr.status, 
+                    sr.assigned_provider_id, 
+                    c.user_name AS prestador_nome, -- 🔥 TRUQUE: Pegamos o nome do CLIENTE na tabela users
+                    u.user_banner AS prestador_foto, 
+                    pv.name AS veiculo_prestador_nome,
+                    pv.plate AS veiculo_prestador_placa,
+                    sr.final_price, 
+                    sr.final_distance, 
+                    sr.destino_address, 
+                    sr.created_at
+                FROM service_requests sr
+                LEFT JOIN users u ON sr.assigned_provider_id = u.user_id -- Perfil da Oficina
+                LEFT JOIN users c ON sr.customer_id = c.user_id          -- Perfil do Cliente
+                LEFT JOIN customer_vehicles cv ON sr.vehicle_id = cv.id
+                LEFT JOIN provider_vehicles pv ON sr.assigned_provider_id = pv.provider_id AND pv.is_active = 1
+                WHERE sr.assigned_provider_id = ? AND sr.status IN ('accepted', 'in_progress', 'completed')
+                ORDER BY sr.created_at DESC
+            """.trimIndent()
+
+            val statement = conn.prepareStatement(sql)
+            statement.setInt(1, providerId)
+            val rs = statement.executeQuery()
+
+            while (rs.next()) {
+                val price = rs.getDouble("final_price")
+                val finalPriceSafe = if (rs.wasNull()) null else price
+
+                val distance = rs.getDouble("final_distance")
+                val finalDistanceSafe = if (rs.wasNull()) null else distance
+
+                val brand = rs.getString("brand") ?: ""
+                val model = rs.getString("model") ?: ""
+                val plate = rs.getString("plate") ?: ""
+                val vehicleInfoFormatted = if (brand.isNotEmpty() && model.isNotEmpty()) {
+                    "$brand $model - $plate"
+                } else {
+                    "Veículo não informado"
+                }
+
+                listaPedidos.add(
+                    PedidosResponse(
+                        id = rs.getInt("id"),
+                        customer_id = rs.getInt("customer_id"),
+                        service_type = rs.getString("service_type"),
+                        description = rs.getString("description"),
+                        vehicle_info = vehicleInfoFormatted,
+                        status = rs.getString("status"),
+                        assigned_provider_id = rs.getInt("assigned_provider_id"),
+
+                        // 🔥 TRUQUE: O 'prestador_nome' agora devolve o NOME DO CLIENTE para a tela da oficina!
+                        prestador_nome = rs.getString("prestador_nome"),
+
+                        final_price = finalPriceSafe,
+                        final_distance = finalDistanceSafe,
+                        destino_address = rs.getString("destino_address"),
+                        created_at = rs.getString("created_at") ?: "",
+                        prestador_foto = rs.getString("prestador_foto"),
+                        veiculo_prestador_nome = rs.getString("veiculo_prestador_nome"),
+                        veiculo_prestador_placa = rs.getString("veiculo_prestador_placa")
+                    )
+                )
+            }
+            listaPedidos
+        }
+    } catch (e: Exception) {
+        println("Erro ao buscar histórico da oficina: ${e.message}")
+        emptyList()
+    }
+}
+
 fun verificarStatusDoPedidoBanco(requestId: Int): PollingStatusResponse {
     // Valor padrão caso o pedido nem exista no banco
     var resposta = PollingStatusResponse(status = "unknown")
