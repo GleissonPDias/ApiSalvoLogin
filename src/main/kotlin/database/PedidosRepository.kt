@@ -1,7 +1,10 @@
 package com.example.database
 
+import com.example.models.AceitarPedidoRequest
+import com.example.models.OficinaDetalhesPolling
 import com.example.models.PedidoPendenteResponse
 import com.example.models.PedidosResponse
+import com.example.models.PollingStatusResponse
 
 fun buscarPedidos(userId: Int): List<PedidosResponse> {
     val listaPedidos = mutableListOf<PedidosResponse>()
@@ -136,5 +139,125 @@ fun buscarPedidosDoPrestador(providerId: Int): List<PedidoPendenteResponse> {
     } catch (e: Exception) {
         println("Erro ao buscar pedidos do prestador: ${e.message}")
         emptyList()
+    }
+}
+
+fun verificarStatusDoPedidoBanco(requestId: Int): PollingStatusResponse {
+    var resposta = PollingStatusResponse(status = "unknown")
+
+    try {
+        DatabaseConfig.getConnection().use { conn ->
+            // 1. Checa o status atual do pedido
+            val sqlCheck = "SELECT status, assigned_provider_id, final_price, final_distance, cancellation_reason FROM service_requests WHERE id = ?"
+            val stmtCheck = conn.prepareStatement(sqlCheck)
+            stmtCheck.setInt(1, requestId)
+            val rsCheck = stmtCheck.executeQuery()
+
+            if (rsCheck.next()) {
+                val statusAtual = rsCheck.getString("status")
+                val providerId = rsCheck.getInt("assigned_provider_id")
+
+                if (statusAtual == "accepted" && providerId != 0) {
+                    // 2. Se aceitou, busca o pacote completo com JOIN
+                    val sqlJoin = """
+                        SELECT 
+                            u.name AS oficina_nome, 
+                            p.profile_photo_url, 
+                            v.name AS veiculo_nome, 
+                            v.plate AS veiculo_placa
+                        FROM users u
+                        LEFT JOIN provider_profiles p ON u.user_id = p.provider_id
+                        -- Pega o primeiro veículo ativo da oficina
+                        LEFT JOIN provider_vehicles v ON u.user_id = v.provider_id AND v.is_active = 1
+                        WHERE u.user_id = ?
+                        LIMIT 1
+                    """.trimIndent()
+
+                    val stmtJoin = conn.prepareStatement(sqlJoin)
+                    stmtJoin.setInt(1, providerId)
+                    val rsJoin = stmtJoin.executeQuery()
+
+                    if(rsJoin.next()){
+                        val detalhes = OficinaDetalhesPolling(
+                            nome = rsJoin.getString("oficina_nome") ?: "Oficina Parceira",
+                            fotoPerfil = rsJoin.getString("profile_photo_url"),
+                            valorFinal = rsCheck.getDouble("final_price"),
+                            distanciaKm = rsCheck.getDouble("final_distance"),
+                            nomeVeiculo = rsJoin.getString("veiculo_nome"),
+                            placaVeiculo = rsJoin.getString("veiculo_placa")
+                        )
+                        resposta = PollingStatusResponse("accepted", null, detalhes)
+                    } else {
+                        // Trata caso a oficina exista mas não tenha completado o perfil
+                        val detalhesBasicos = OficinaDetalhesPolling("Oficina Parceira", null, rsCheck.getDouble("final_price"), rsCheck.getDouble("final_distance"), null, null)
+                        resposta = PollingStatusResponse("accepted", null, detalhesBasicos)
+                    }
+
+                } else if (statusAtual == "canceled") {
+                    resposta = PollingStatusResponse("canceled", rsCheck.getString("cancellation_reason"), null)
+                } else {
+                    // Provavelmente 'searching'
+                    resposta = PollingStatusResponse(statusAtual, null, null)
+                }
+            }
+        }
+    } catch (e: Exception) {
+        println("Erro no Polling: ${e.message}")
+    }
+    return resposta
+}
+
+fun aceitarPedidoBanco(dados: AceitarPedidoRequest): Boolean {
+    return try {
+        DatabaseConfig.getConnection().use { conn ->
+            conn.autoCommit = false
+            try {
+                // 1. Grava os dados finais do pedido
+                val sqlRequest = """
+                    UPDATE service_requests 
+                    SET status = 'accepted', 
+                        assigned_provider_id = ?, 
+                        final_price = ?, 
+                        final_distance = ? 
+                    WHERE id = ? AND status = 'searching'
+                """.trimIndent()
+
+                val stmt = conn.prepareStatement(sqlRequest)
+                stmt.setInt(1, dados.providerId)
+                stmt.setDouble(2, dados.price)
+                stmt.setDouble(3, dados.distance)
+                stmt.setInt(4, dados.requestId)
+
+                val linhasAfetadas = stmt.executeUpdate()
+
+                // Se atualizou mais de zero linhas, significa que ele foi o primeiro!
+                if (linhasAfetadas > 0) {
+
+                    // 2. Atualiza a tabela de convites (Matches)
+                    val sqlMatch = """
+                        UPDATE service_matches 
+                        SET status = 'accepted' 
+                        WHERE request_id = ? AND provider_id = ?
+                    """.trimIndent()
+
+                    val stmtMatch = conn.prepareStatement(sqlMatch)
+                    stmtMatch.setInt(1, dados.requestId)
+                    stmtMatch.setInt(2, dados.providerId)
+                    stmtMatch.executeUpdate()
+
+                    conn.commit()
+                    true // Sucesso! O pedido é dele.
+                } else {
+                    conn.rollback()
+                    false // Outra oficina foi mais rápida ou o pedido expirou.
+                }
+            } catch (e: Exception) {
+                conn.rollback()
+                throw e
+            }
+        }
+    } catch (e: Exception) {
+        println("Erro ao aceitar pedido no MySQL: ${e.message}")
+        false
     }
 }

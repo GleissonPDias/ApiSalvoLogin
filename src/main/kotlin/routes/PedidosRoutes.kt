@@ -1,6 +1,7 @@
 package com.example.routes
 
 import com.example.database.buscarPedidos
+import com.example.database.verificarStatusDoPedidoBanco // <-- NÃO ESQUEÇA DESTE IMPORT
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.application.call
 import io.ktor.server.response.respond
@@ -9,9 +10,10 @@ import io.ktor.server.routing.get
 import kotlin.text.toIntOrNull
 
 fun Route.pedidoRoutes() {
+
+    // ROTA QUE VOCÊ JÁ TINHA
     get("/listar-pedidos") {
         try {
-            // Pega o userId dos parâmetros da URL (?userId=1)
             val userId = call.request.queryParameters["userId"]?.toIntOrNull()
 
             if (userId == null) {
@@ -20,12 +22,23 @@ fun Route.pedidoRoutes() {
             }
 
             val pedidos = buscarPedidos(userId)
-
-            // Retorna a lista de pedidos encontrada
             call.respond(HttpStatusCode.OK, pedidos)
 
         } catch (e: Exception) {
             call.respond(HttpStatusCode.InternalServerError, "Erro ao buscar pedidos: ${e.message}")
+        }
+    }
+
+    // ==============================================================
+    // 🔄 NOVA ROTA: O POLLING DO APLICATIVO DO CLIENTE
+    // ==============================================================
+    get("/status-pedido/{id}") {
+        val requestId = call.parameters["id"]?.toIntOrNull()
+        if (requestId != null) {
+            val statusAtualizado = verificarStatusDoPedidoBanco(requestId)
+            call.respond(HttpStatusCode.OK, statusAtualizado)
+        } else {
+            call.respond(HttpStatusCode.BadRequest, mapOf("erro" to "ID inválido"))
         }
     }
 }

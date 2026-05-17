@@ -9,10 +9,17 @@ data class PedidoSocorroRequest(
     val description: String,
 )
 
+data class ProviderMatchDetail(
+    val providerId: Int,
+    val preco: Double,
+    val distanciaKm: Double,
+    val minutosEstimados: Int
+)
+
 data class PedidoSocorroResponse(
     val sucesso: Boolean,
     val mensagem: String,
     val requestId: Int? = null,
     val mecanicosNotificados: Int = 0,
-    val idsPrestadores: List<Int>? = null
+    val prestadoresMatch: List<ProviderMatchDetail>? = null
 )
