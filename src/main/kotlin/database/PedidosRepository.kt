@@ -10,7 +10,6 @@ fun buscarPedidos(userId: Int): List<PedidosResponse> {
     val listaPedidos = mutableListOf<PedidosResponse>()
     return try {
         DatabaseConfig.getConnection().use { conn ->
-            // Query atualizada: lendo vehicle_id e fazendo JOIN com customer_vehicles
             val sql = """
                 SELECT 
                     sr.id, 
@@ -49,7 +48,6 @@ fun buscarPedidos(userId: Int): List<PedidosResponse> {
                 val distance = rs.getDouble("final_distance")
                 val finalDistanceSafe = if (rs.wasNull()) null else distance
 
-                // Montando uma string com as informações do veículo para enviar ao frontend
                 val brand = rs.getString("brand") ?: ""
                 val model = rs.getString("model") ?: ""
                 val plate = rs.getString("plate") ?: ""
@@ -65,7 +63,7 @@ fun buscarPedidos(userId: Int): List<PedidosResponse> {
                         customer_id = rs.getInt("customer_id"),
                         service_type = rs.getString("service_type"),
                         description = rs.getString("description"),
-                        vehicle_info = vehicleInfoFormatted, // <-- Agora envia a string formatada
+                        vehicle_info = vehicleInfoFormatted,
                         status = rs.getString("status"),
                         assigned_provider_id = assignedProviderIdSafe,
                         prestador_nome = rs.getString("prestador_nome"),
@@ -85,7 +83,6 @@ fun buscarPedidos(userId: Int): List<PedidosResponse> {
 }
 
 fun buscarPedidosDoPrestador(providerId: Int): List<PedidoPendenteResponse> {
-    // ... (Esta função está perfeita e não precisa de alterações)
     val listaPedidos = mutableListOf<PedidoPendenteResponse>()
 
     return try {
@@ -161,7 +158,7 @@ fun verificarStatusDoPedidoBanco(requestId: Int): PollingStatusResponse {
                     // 2. Se aceitou, busca o pacote completo com JOIN
                     val sqlJoin = """
                         SELECT 
-                            u.name AS oficina_nome, 
+                            u.user_name AS oficina_nome, -- 🔥 CORRIGIDO DE u.name PARA u.user_name
                             p.profile_photo_url, 
                             v.name AS veiculo_nome, 
                             v.plate AS veiculo_placa
@@ -188,7 +185,6 @@ fun verificarStatusDoPedidoBanco(requestId: Int): PollingStatusResponse {
                         )
                         resposta = PollingStatusResponse("accepted", null, detalhes)
                     } else {
-                        // Trata caso a oficina exista mas não tenha completado o perfil
                         val detalhesBasicos = OficinaDetalhesPolling("Oficina Parceira", null, rsCheck.getDouble("final_price"), rsCheck.getDouble("final_distance"), null, null)
                         resposta = PollingStatusResponse("accepted", null, detalhesBasicos)
                     }
@@ -196,7 +192,6 @@ fun verificarStatusDoPedidoBanco(requestId: Int): PollingStatusResponse {
                 } else if (statusAtual == "canceled") {
                     resposta = PollingStatusResponse("canceled", rsCheck.getString("cancellation_reason"), null)
                 } else {
-                    // Provavelmente 'searching'
                     resposta = PollingStatusResponse(statusAtual, null, null)
                 }
             }
@@ -230,9 +225,7 @@ fun aceitarPedidoBanco(dados: AceitarPedidoRequest): Boolean {
 
                 val linhasAfetadas = stmt.executeUpdate()
 
-                // Se atualizou mais de zero linhas, significa que ele foi o primeiro!
                 if (linhasAfetadas > 0) {
-
                     // 2. Atualiza a tabela de convites (Matches)
                     val sqlMatch = """
                         UPDATE service_matches 
@@ -246,10 +239,10 @@ fun aceitarPedidoBanco(dados: AceitarPedidoRequest): Boolean {
                     stmtMatch.executeUpdate()
 
                     conn.commit()
-                    true // Sucesso! O pedido é dele.
+                    true
                 } else {
                     conn.rollback()
-                    false // Outra oficina foi mais rápida ou o pedido expirou.
+                    false
                 }
             } catch (e: Exception) {
                 conn.rollback()
