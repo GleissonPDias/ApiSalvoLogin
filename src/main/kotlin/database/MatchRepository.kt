@@ -36,9 +36,9 @@ fun solicitarSocorroRadar(pedido: PedidoSocorroRequest): PedidoSocorroResponse {
 
                 if (novoRequestId == -1) throw Exception("Falha ao gerar o ID do pedido no MySQL.")
 
-                // 2. O RADAR DINÂMICO (Calcula distância e puxa preço)
+                // 2. O RADAR DINÂMICO (🔥 CORRIGIDO: Usando base_price e price_per_km)
                 val sqlRadar = """
-                    SELECT u.user_id, ps.preco,
+                    SELECT u.user_id, ps.base_price, ps.price_per_km,
                            ST_Distance_Sphere(POINT(u.longitude, u.latitude), POINT(?, ?)) AS distancia_metros
                     FROM users u
                     JOIN provider_profiles prof ON u.user_id = prof.provider_id
@@ -60,20 +60,22 @@ fun solicitarSocorroRadar(pedido: PedidoSocorroRequest): PedidoSocorroResponse {
 
                 val rsRadar = stmtRadar.executeQuery()
 
-                // NOVO: Agora a lista guarda um objeto rico, não mais só um número de ID
                 val oficinasEncontradas = mutableListOf<ProviderMatchDetail>()
 
                 while (rsRadar.next()) {
                     val id = rsRadar.getInt("user_id")
-                    val precoDoServico = rsRadar.getDouble("preco")
+
+                    val basePrice = rsRadar.getDouble("base_price")
+                    val pricePerKm = rsRadar.getDouble("price_per_km")
                     val distanciaEmMetros = rsRadar.getDouble("distancia_metros")
 
-                    // Converte metros para KM com uma casa decimal e estima o tempo
                     val distanciaKm = Math.round((distanciaEmMetros / 1000.0) * 10.0) / 10.0
                     val minutosEstimados = Math.max(2, (distanciaKm * 2.5).toInt())
 
+                    val precoFinalCalculado = basePrice + (pricePerKm * distanciaKm)
+
                     oficinasEncontradas.add(
-                        ProviderMatchDetail(id, precoDoServico, distanciaKm, minutosEstimados)
+                        ProviderMatchDetail(id, precoFinalCalculado, distanciaKm, minutosEstimados)
                     )
                 }
 
@@ -84,7 +86,7 @@ fun solicitarSocorroRadar(pedido: PedidoSocorroRequest): PedidoSocorroResponse {
 
                     for (oficina in oficinasEncontradas) {
                         stmtMatch.setInt(1, novoRequestId)
-                        stmtMatch.setInt(2, oficina.providerId) // Atualizado para puxar do objeto
+                        stmtMatch.setInt(2, oficina.providerId)
                         stmtMatch.addBatch()
                     }
                     stmtMatch.executeBatch()
@@ -97,7 +99,7 @@ fun solicitarSocorroRadar(pedido: PedidoSocorroRequest): PedidoSocorroResponse {
                     mensagem = "Pedido criado! Procurando socorro...",
                     requestId = novoRequestId,
                     mecanicosNotificados = oficinasEncontradas.size,
-                    prestadoresMatch = oficinasEncontradas // NOVO: Devolve a lista rica
+                    prestadoresMatch = oficinasEncontradas
                 )
 
             } catch (e: Exception) {
