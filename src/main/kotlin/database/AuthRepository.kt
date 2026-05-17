@@ -45,35 +45,76 @@ fun validarNoBanco(email: String, senhaDigitada: String): AuthResponse {
 fun cadastrarNoBanco(usuario: RegisterRequest): AuthResponse {
     return try {
         DatabaseConfig.getConnection().use { conn ->
-            val senhaHasheada = BCrypt.hashpw(usuario.password, BCrypt.gensalt())
+            // Desativamos o autoCommit para abrir uma transação segura
+            conn.autoCommit = false
 
-            val roleMapeado = when (usuario.role.lowercase().trim()) {
-                "prestador", "provider", "oficina" -> "provider"
-                "cliente", "customer" -> "customer"
-                else -> "customer"
-            }
+            try {
+                val senhaHasheada = BCrypt.hashpw(usuario.password, BCrypt.gensalt())
 
-            val sql = "INSERT INTO users (user_name, user_email, user_password, user_cpf_cnpj, user_phone, user_role, latitude, longitude) VALUES (?, ?, ?, ?, ?, ?,?,?)"
-            val statement = conn.prepareStatement(sql)
-            statement.setString(1, usuario.nome)
-            statement.setString(2, usuario.email)
-            statement.setString(3, senhaHasheada)
-            statement.setString(4, usuario.cpf)
-            statement.setString(5, usuario.telefone)
-            statement.setString(6, roleMapeado)
-            statement.setDouble(7, usuario.latitude ?: 0.0)
-            statement.setDouble(8, usuario.longitude ?: 0.0)
+                val roleMapeado = when (usuario.role.lowercase().trim()) {
+                    "prestador", "provider", "oficina" -> "provider"
+                    "cliente", "customer" -> "customer"
+                    else -> "customer"
+                }
 
-            val linhasAfetadas = statement.executeUpdate()
+                val sqlUser = """
+                    INSERT INTO users (user_name, user_email, user_password, user_cpf_cnpj, user_phone, user_role, latitude, longitude) 
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                """.trimIndent()
 
-            if (linhasAfetadas > 0) {
-                AuthResponse(true, "Usuário cadastrado com sucesso!")
-            } else {
-                AuthResponse(false, "Falha ao cadastrar usuário.")
+                // MODIFICAÇÃO: Adicionado Statement.RETURN_GENERATED_KEYS para capturar o ID auto-incremento
+                val statement = conn.prepareStatement(sqlUser, java.sql.Statement.RETURN_GENERATED_KEYS)
+                statement.setString(1, usuario.nome)
+                statement.setString(2, usuario.email)
+                statement.setString(3, senhaHasheada)
+                statement.setString(4, usuario.cpf)
+                statement.setString(5, usuario.telefone)
+                statement.setString(6, roleMapeado)
+                statement.setDouble(7, usuario.latitude ?: 0.0)
+                statement.setDouble(8, usuario.longitude ?: 0.0)
+
+                val linhasAfetadas = statement.executeUpdate()
+
+                if (linhasAfetadas > 0) {
+                    // 1. Recupera o ID gerado pelo MySQL
+                    val rs = statement.generatedKeys
+                    var novoUserId = -1
+                    if (rs.next()) {
+                        novoUserId = rs.getInt(1)
+                    }
+
+                    // 2. NOVA LÓGICA: Se for prestador, cria o perfil automaticamente
+                    if (roleMapeado == "provider" && novoUserId != -1) {
+                        val sqlProfile = "INSERT INTO provider_profiles (provider_id, is_receiving_requests) VALUES (?, 0)"
+                        val stmtProfile = conn.prepareStatement(sqlProfile)
+                        stmtProfile.setInt(1, novoUserId)
+                        stmtProfile.executeUpdate()
+
+                        // NOTA: Inicializamos com '0' (Offline).
+                        // O prestador fica online quando ativar o Switch na Home do app!
+                    }
+
+                    // Se os inserts deram certo, salvamos definitivamente no MySQL
+                    conn.commit()
+
+                    AuthResponse(
+                        sucesso = true,
+                        message = "Usuário cadastrado com sucesso!",
+                        userId = novoUserId,
+                        nome = usuario.nome,
+                        role = roleMapeado
+                    )
+                } else {
+                    conn.rollback()
+                    AuthResponse(false, "Falha ao cadastrar usuário.", null, null, null)
+                }
+            } catch (e: Exception) {
+                conn.rollback() // Se der qualquer erro no meio do caminho, desfaz tudo!
+                throw e
             }
         }
     } catch (e: Exception) {
-        AuthResponse(false, "Erro ao cadastrar: ${e.message}")
+        AuthResponse(false, "Erro ao cadastrar: ${e.message}", null, null, null)
     }
 }
 
