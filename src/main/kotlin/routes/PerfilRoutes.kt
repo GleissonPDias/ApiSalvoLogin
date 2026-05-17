@@ -2,6 +2,7 @@ package com.example.routes
 
 import com.example.database.buscarPerfilNoBanco
 import com.example.database.atualizarPerfilNoBanco
+import com.example.database.atualizarStatusOnline
 import com.example.database.buscarServicosDaOficina
 import com.example.models.GenericResponse // <-- MUDANÇA AQUI
 import io.ktor.http.*
@@ -93,4 +94,30 @@ fun Route.perfilRoutes() {
         else call.respond(HttpStatusCode.InternalServerError)
     }
 
+    post("/provider/toggle-status") {
+        try {
+            // Recebe um mapa de strings enviadas pelo aplicativo
+            val parametros = call.receive<Map<String, String>>()
+            val providerId = parametros["provider_id"]?.toIntOrNull()
+            val isOnline = parametros["is_online"]?.toBoolean() ?: false
+
+            if (providerId == null) {
+                call.respond(HttpStatusCode.BadRequest, mapOf("sucesso" to false, "message" to "ID inválido"))
+                return@post
+            }
+
+            // Chama a função que criamos no passo anterior
+            val sucesso = atualizarStatusOnline(providerId, isOnline)
+
+            if (sucesso) {
+                call.respond(HttpStatusCode.OK, mapOf("sucesso" to true, "isOnline" to isOnline))
+            } else {
+                call.respond(HttpStatusCode.InternalServerError, mapOf("sucesso" to false, "message" to "Erro ao atualizar banco"))
+            }
+        } catch (e: Exception) {
+            call.respond(HttpStatusCode.InternalServerError, mapOf("sucesso" to false, "message" to e.message))
+        }
+    }
+
 }
+

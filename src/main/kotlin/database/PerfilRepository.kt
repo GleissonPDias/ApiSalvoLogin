@@ -89,3 +89,21 @@ fun buscarPerfilNoBanco(id: Int): Map<String, Any?>? {
     }
 }
 
+fun atualizarStatusOnline(providerId: Int, isOnline: Boolean): Boolean {
+    return try {
+        DatabaseConfig.getConnection().use { conn ->
+            val sql = "UPDATE provider_profiles SET is_receiving_requests = ? WHERE provider_id = ?"
+            val stmt = conn.prepareStatement(sql)
+
+            // No MySQL, TRUE é 1 e FALSE é 0
+            stmt.setInt(1, if (isOnline) 1 else 0)
+            stmt.setInt(2, providerId)
+
+            val linhasAfetadas = stmt.executeUpdate()
+            linhasAfetadas > 0 // Retorna true se atualizou com sucesso
+        }
+    } catch (e: Exception) {
+        println("Erro ao atualizar status online do prestador: ${e.message}")
+        false
+    }
+}
