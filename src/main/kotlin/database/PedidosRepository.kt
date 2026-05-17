@@ -140,11 +140,12 @@ fun buscarPedidosDoPrestador(providerId: Int): List<PedidoPendenteResponse> {
 }
 
 fun verificarStatusDoPedidoBanco(requestId: Int): PollingStatusResponse {
+    // Valor padrão caso o pedido nem exista no banco
     var resposta = PollingStatusResponse(status = "unknown")
 
     try {
         DatabaseConfig.getConnection().use { conn ->
-            // 1. Checa o status atual do pedido
+            // 1. Checa o status atual do pedido na tabela principal
             val sqlCheck = "SELECT status, assigned_provider_id, final_price, final_distance, cancellation_reason FROM service_requests WHERE id = ?"
             val stmtCheck = conn.prepareStatement(sqlCheck)
             stmtCheck.setInt(1, requestId)
@@ -155,49 +156,63 @@ fun verificarStatusDoPedidoBanco(requestId: Int): PollingStatusResponse {
                 val providerId = rsCheck.getInt("assigned_provider_id")
 
                 if (statusAtual == "accepted" && providerId != 0) {
-                    // 2. Se aceitou, busca o pacote completo com JOIN
-                    val sqlJoin = """
-                        SELECT 
-                            u.user_name AS oficina_nome, -- 🔥 CORRIGIDO DE u.name PARA u.user_name
-                            p.profile_photo_url, 
-                            v.name AS veiculo_nome, 
-                            v.plate AS veiculo_placa
-                        FROM users u
-                        LEFT JOIN provider_profiles p ON u.user_id = p.provider_id
-                        -- Pega o primeiro veículo ativo da oficina
-                        LEFT JOIN provider_vehicles v ON u.user_id = v.provider_id AND v.is_active = 1
-                        WHERE u.user_id = ?
-                        LIMIT 1
-                    """.trimIndent()
 
-                    val stmtJoin = conn.prepareStatement(sqlJoin)
-                    stmtJoin.setInt(1, providerId)
-                    val rsJoin = stmtJoin.executeQuery()
+                    // 🔥 PASSO SEGURO: Define a resposta como 'accepted' IMEDIATAMENTE.
+                    // Mesmo que as tabelas de fotos ou veículos falhem, o cliente NÃO FICA PRESO!
+                    val detalhesBasicos = OficinaDetalhesPolling(
+                        nome = "Oficina Confirmada",
+                        fotoPerfil = null,
+                        valorFinal = rsCheck.getDouble("final_price"),
+                        distanciaKm = rsCheck.getDouble("final_distance"),
+                        nomeVeiculo = null,
+                        placaVeiculo = null
+                    )
+                    resposta = PollingStatusResponse("accepted", null, detalhesBasicos)
 
-                    if(rsJoin.next()){
-                        val detalhes = OficinaDetalhesPolling(
-                            nome = rsJoin.getString("oficina_nome") ?: "Oficina Parceira",
-                            fotoPerfil = rsJoin.getString("profile_photo_url"),
-                            valorFinal = rsCheck.getDouble("final_price"),
-                            distanciaKm = rsCheck.getDouble("final_distance"),
-                            nomeVeiculo = rsJoin.getString("veiculo_nome"),
-                            placaVeiculo = rsJoin.getString("veiculo_placa")
-                        )
-                        resposta = PollingStatusResponse("accepted", null, detalhes)
-                    } else {
-                        val detalhesBasicos = OficinaDetalhesPolling("Oficina Parceira", null, rsCheck.getDouble("final_price"), rsCheck.getDouble("final_distance"), null, null)
-                        resposta = PollingStatusResponse("accepted", null, detalhesBasicos)
+                    // 2. Tenta buscar os dados estéticos (nome e veículo), mas isolado para não quebrar o fluxo
+                    try {
+                        val sqlJoin = """
+                            SELECT 
+                                u.user_name AS oficina_nome, 
+                                v.name AS veiculo_nome, 
+                                v.plate AS veiculo_placa
+                            FROM users u
+                            LEFT JOIN provider_vehicles v ON u.user_id = v.provider_id AND v.is_active = 1
+                            WHERE u.user_id = ?
+                            LIMIT 1
+                        """.trimIndent()
+
+                        val stmtJoin = conn.prepareStatement(sqlJoin)
+                        stmtJoin.setInt(1, providerId)
+                        val rsJoin = stmtJoin.executeQuery()
+
+                        if (rsJoin.next()) {
+                            val detalhesCompletos = OficinaDetalhesPolling(
+                                nome = rsJoin.getString("oficina_nome") ?: "Oficina Confirmada",
+                                fotoPerfil = null, // Deixado nulo temporariamente para evitar erros com a tabela de perfis
+                                valorFinal = rsCheck.getDouble("final_price"),
+                                distanciaKm = rsCheck.getDouble("final_distance"),
+                                nomeVeiculo = rsJoin.getString("veiculo_nome"),
+                                placaVeiculo = rsJoin.getString("veiculo_placa")
+                            )
+                            resposta = PollingStatusResponse("accepted", null, detalhesCompletos)
+                        }
+                    } catch (eInner: Exception) {
+                        // Se colunas como 'v.name' ou tabelas falharem, o Ktor avisa o terminal, mas não quebra o app do cliente
+                        println("⚠️ Aviso no Polling (Detalhes Oficina): ${eInner.message}")
                     }
 
                 } else if (statusAtual == "canceled") {
                     resposta = PollingStatusResponse("canceled", rsCheck.getString("cancellation_reason"), null)
                 } else {
+                    // Retorna o status atual real (ex: 'searching')
                     resposta = PollingStatusResponse(statusAtual, null, null)
                 }
             }
         }
     } catch (e: Exception) {
-        println("Erro no Polling: ${e.message}")
+        println("❌ Erro grave no verificarStatusDoPedidoBanco: ${e.message}")
+        e.printStackTrace()
     }
     return resposta
 }
