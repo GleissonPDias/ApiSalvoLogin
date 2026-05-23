@@ -1,7 +1,9 @@
 package com.example
 
 
+import com.example.database.BombSearchRepository
 import com.example.routes.authRoutes
+import com.example.routes.bombSearchRoutes
 import com.example.routes.matchRoutes
 import com.example.routes.pedidoRoutes
 import com.example.routes.perfilRoutes
@@ -39,6 +41,8 @@ fun main() {
             servicoRoutes()
 
             radarWebSocketRoute()
+
+            bombSearchRoutes(BombSearchRepository())
 
         }
 
