@@ -16,7 +16,9 @@ data class PedidosResponse(
     val created_at: String,
     val prestador_foto: String? = null,
     val veiculo_prestador_nome: String? = null,
-    val veiculo_prestador_placa: String? = null
+    val veiculo_prestador_placa: String? = null,
+    val latitude: Double?,
+    val longitude: Double?
 )
 
 data class PedidoPendenteResponse(

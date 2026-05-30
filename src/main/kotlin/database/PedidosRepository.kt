@@ -16,7 +16,9 @@ fun buscarPedidos(userId: Int): List<PedidosResponse> {
                     sr.id, 
                     sr.customer_id, 
                     sr.service_type, 
-                    sr.description, 
+                    sr.description,
+                    sr.location_lat,
+                    sr.location_lng,
                     sr.vehicle_id, 
                     cv.brand,
                     cv.model,
@@ -54,6 +56,13 @@ fun buscarPedidos(userId: Int): List<PedidosResponse> {
                 val distance = rs.getDouble("final_distance")
                 val finalDistanceSafe = if (rs.wasNull()) null else distance
 
+                // 🔥 PROTEÇÃO PARA VALORES NULOS NO BANCO:
+                val lat = rs.getDouble("location_lat")
+                val latSafe = if (rs.wasNull()) null else lat
+
+                val lng = rs.getDouble("location_lng")
+                val lngSafe = if (rs.wasNull()) null else lng
+
                 val brand = rs.getString("brand") ?: ""
                 val model = rs.getString("model") ?: ""
                 val plate = rs.getString("plate") ?: ""
@@ -80,7 +89,11 @@ fun buscarPedidos(userId: Int): List<PedidosResponse> {
                         // 🚀 MAPEAMENTO DOS NOVOS CAMPOS:
                         prestador_foto = rs.getString("prestador_foto"),
                         veiculo_prestador_nome = rs.getString("veiculo_prestador_nome"),
-                        veiculo_prestador_placa = rs.getString("veiculo_prestador_placa")
+                        veiculo_prestador_placa = rs.getString("veiculo_prestador_placa"),
+                        latitude = latSafe,
+                        longitude = lngSafe
+
+
                     )
                 )
             }
@@ -158,7 +171,9 @@ fun buscarHistoricoDaOficina(providerId: Int): List<PedidosResponse> {
                     sr.id, 
                     sr.customer_id, 
                     sr.service_type, 
-                    sr.description, 
+                    sr.description,
+                    sr.location_lat,
+                    sr.location_lng,
                     sr.vehicle_id, 
                     cv.brand,
                     cv.model,
@@ -194,6 +209,12 @@ fun buscarHistoricoDaOficina(providerId: Int): List<PedidosResponse> {
                 val distance = rs.getDouble("final_distance")
                 val finalDistanceSafe = if (rs.wasNull()) null else distance
 
+                val lat = rs.getDouble("location_lat")
+                val latSafe = if (rs.wasNull()) null else lat
+
+                val lng = rs.getDouble("location_lng")
+                val lngSafe = if (rs.wasNull()) null else lng
+
                 val brand = rs.getString("brand") ?: ""
                 val model = rs.getString("model") ?: ""
                 val plate = rs.getString("plate") ?: ""
@@ -223,7 +244,9 @@ fun buscarHistoricoDaOficina(providerId: Int): List<PedidosResponse> {
                         created_at = rs.getString("created_at") ?: "",
                         prestador_foto = rs.getString("prestador_foto"),
                         veiculo_prestador_nome = rs.getString("veiculo_prestador_nome"),
-                        veiculo_prestador_placa = rs.getString("veiculo_prestador_placa")
+                        veiculo_prestador_placa = rs.getString("veiculo_prestador_placa"),
+                        latitude = latSafe,
+                        longitude = lngSafe,
                     )
                 )
             }
