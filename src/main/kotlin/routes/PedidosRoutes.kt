@@ -1,13 +1,16 @@
 package com.example.routes
 
+import com.example.database.atualizarStatusPedidoBanco
 import com.example.database.buscarHistoricoDaOficina
 import com.example.database.buscarPedidos
 import com.example.database.verificarStatusDoPedidoBanco // <-- NÃO ESQUEÇA DESTE IMPORT
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.application.call
+import io.ktor.server.request.receive
 import io.ktor.server.response.respond
 import io.ktor.server.routing.Route
 import io.ktor.server.routing.get
+import io.ktor.server.routing.patch
 import kotlin.text.toIntOrNull
 
 fun Route.pedidoRoutes() {
@@ -49,6 +52,31 @@ fun Route.pedidoRoutes() {
             call.respond(pedidos)
         } else {
             call.respond(HttpStatusCode.BadRequest, "ID do prestador ausente.")
+        }
+    }
+
+    patch("/atualizar-status-pedido/{id}") {
+        try {
+            val pedidoId = call.parameters["id"]?.toIntOrNull()
+            val campos = call.receive<Map<String, String>>()
+
+            val providerId = campos["provider_id"]?.toIntOrNull()
+            val novoStatus = campos["status"]
+
+            if (pedidoId == null || providerId == null || novoStatus.isNullOrBlank()) {
+                call.respond(HttpStatusCode.BadRequest, mapOf("sucesso" to false, "mensagem" to "Parâmetros inválidos"))
+                return@patch
+            }
+
+            val sucesso = atualizarStatusPedidoBanco(pedidoId, providerId, novoStatus)
+
+            if (sucesso) {
+                call.respond(HttpStatusCode.OK, mapOf("sucesso" to true, "mensagem" to "Status atualizado com sucesso!"))
+            } else {
+                call.respond(HttpStatusCode.InternalServerError, mapOf("sucesso" to false, "mensagem" to "Erro ao atualizar status no banco."))
+            }
+        } catch (e: Exception) {
+            call.respond(HttpStatusCode.BadRequest, mapOf("sucesso" to false, "mensagem" to "Erro: ${e.message}"))
         }
     }
 }

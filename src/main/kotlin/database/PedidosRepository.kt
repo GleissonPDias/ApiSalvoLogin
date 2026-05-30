@@ -365,3 +365,21 @@ fun aceitarPedidoBanco(dados: AceitarPedidoRequest): Boolean {
         false
     }
 }
+
+fun atualizarStatusPedidoBanco(pedidoId: Int, providerId: Int, status: String): Boolean {
+    return try {
+        DatabaseConfig.getConnection().use { conn ->
+            // Atualiza o status apenas se o pedido pertencer a este prestador
+            val sql = "UPDATE service_requests SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND assigned_provider_id = ?"
+            conn.prepareStatement(sql).use { stmt ->
+                stmt.setString(1, status) // Vai receber "en_route", "in_progress", etc.
+                stmt.setInt(2, pedidoId)
+                stmt.setInt(3, providerId)
+                stmt.executeUpdate() > 0
+            }
+        }
+    } catch (e: Exception) {
+        println("Erro atualizarStatusPedidoBanco: ${e.message}")
+        false
+    }
+}
