@@ -54,5 +54,6 @@ data class AceitarPedidoRequest(
     val requestId: Int,
     val providerId: Int,
     val price: Double,
-    val distance: Double
+    val distance: Double,
+    val vehicleId: Int
 )

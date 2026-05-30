@@ -35,7 +35,7 @@ fun buscarPedidos(userId: Int): List<PedidosResponse> {
                 LEFT JOIN users u ON sr.assigned_provider_id = u.user_id
                 LEFT JOIN customer_vehicles cv ON sr.vehicle_id = cv.id
                 LEFT JOIN provider_profiles pp ON sr.assigned_provider_id = pp.provider_id
-                LEFT JOIN provider_vehicles pv ON sr.assigned_provider_id = pv.provider_id AND pv.is_active = 1
+                LEFT JOIN provider_vehicles pv ON sr.provider_vehicle_id = pv.id
                 WHERE sr.customer_id = ?
                 ORDER BY sr.created_at DESC
             """.trimIndent()
@@ -178,7 +178,7 @@ fun buscarHistoricoDaOficina(providerId: Int): List<PedidosResponse> {
                 LEFT JOIN users u ON sr.assigned_provider_id = u.user_id -- Perfil da Oficina
                 LEFT JOIN users c ON sr.customer_id = c.user_id          -- Perfil do Cliente
                 LEFT JOIN customer_vehicles cv ON sr.vehicle_id = cv.id
-                LEFT JOIN provider_vehicles pv ON sr.assigned_provider_id = pv.provider_id AND pv.is_active = 1
+                LEFT JOIN provider_vehicles pv ON sr.provider_vehicle_id = pv.id
                 WHERE sr.assigned_provider_id = ? AND sr.status IN ('accepted', 'en_route', 'arrived', 'in_progress', 'completed')
                 ORDER BY sr.created_at DESC
             """.trimIndent()
@@ -324,7 +324,8 @@ fun aceitarPedidoBanco(dados: AceitarPedidoRequest): Boolean {
                     SET status = 'accepted', 
                         assigned_provider_id = ?, 
                         final_price = ?, 
-                        final_distance = ? 
+                        final_distance = ?,
+                         provider_vehicle_id = ?
                     WHERE id = ? AND status = 'searching'
                 """.trimIndent()
 
@@ -332,7 +333,8 @@ fun aceitarPedidoBanco(dados: AceitarPedidoRequest): Boolean {
                 stmt.setInt(1, dados.providerId)
                 stmt.setDouble(2, dados.price)
                 stmt.setDouble(3, dados.distance)
-                stmt.setInt(4, dados.requestId)
+                stmt.setInt(4, dados.vehicleId)
+                stmt.setInt(5, dados.requestId)
 
                 val linhasAfetadas = stmt.executeUpdate()
 
