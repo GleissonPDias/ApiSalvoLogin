@@ -9,6 +9,7 @@ data class PedidosResponse(
     val status: String,
     val assigned_provider_id: Int?,
     val prestador_nome: String?,
+    val cliente_nome: String? = null,
     val final_price: Double?,
     val final_distance: Double?,
     val destino_address: String?,

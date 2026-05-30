@@ -165,7 +165,8 @@ fun buscarHistoricoDaOficina(providerId: Int): List<PedidosResponse> {
                     cv.plate,
                     sr.status, 
                     sr.assigned_provider_id, 
-                    c.user_name AS prestador_nome, -- 🔥 TRUQUE: Pegamos o nome do CLIENTE na tabela users
+                    u.user_name AS prestador_nome, -- Nome da Oficina
+                    c.user_name AS cliente_nome,   -- Nome do Cliente -- 🔥 TRUQUE: Pegamos o nome do CLIENTE na tabela users
                     u.user_banner AS prestador_foto, 
                     pv.name AS veiculo_prestador_nome,
                     pv.plate AS veiculo_prestador_placa,
@@ -212,8 +213,9 @@ fun buscarHistoricoDaOficina(providerId: Int): List<PedidosResponse> {
                         status = rs.getString("status"),
                         assigned_provider_id = rs.getInt("assigned_provider_id"),
 
-                        // 🔥 TRUQUE: O 'prestador_nome' agora devolve o NOME DO CLIENTE para a tela da oficina!
+
                         prestador_nome = rs.getString("prestador_nome"),
+                        cliente_nome = rs.getString("cliente_nome"),
 
                         final_price = finalPriceSafe,
                         final_distance = finalDistanceSafe,
