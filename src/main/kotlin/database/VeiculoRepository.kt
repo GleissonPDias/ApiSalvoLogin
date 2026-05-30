@@ -1,18 +1,27 @@
 package com.example.database
 
 import com.example.models.ProviderVehicleResponse
+import com.example.models.VeiculoRequest
 
-// 1. CRIAR (POST)
-fun adicionarVeiculoNoBanco(providerId: Int, name: String, plate: String, status: String, photoBase64: String?): Boolean {
+// 1. CRIAR (POST) - Usando a Data Class 'VeiculoRequest'
+fun adicionarVeiculoNoBanco(providerId: Int, veiculo: VeiculoRequest): Boolean {
     return try {
         DatabaseConfig.getConnection().use { conn ->
-            val sql = "INSERT INTO provider_vehicles (provider_id, name, plate, status, vehicle_photo, is_active) VALUES (?, ?, ?, ?, ?, 1)"
+            val sql = """
+                INSERT INTO provider_vehicles 
+                (provider_id, name, plate, status, vehicle_photo, brand, vehicle_type, maintenance_date, is_active) 
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1)
+            """.trimIndent()
+
             conn.prepareStatement(sql).use { stmt ->
                 stmt.setInt(1, providerId)
-                stmt.setString(2, name)
-                stmt.setString(3, plate)
-                stmt.setString(4, status)
-                stmt.setString(5, photoBase64)
+                stmt.setString(2, veiculo.name)
+                stmt.setString(3, veiculo.plate)
+                stmt.setString(4, veiculo.status ?: "Disponível")
+                stmt.setString(5, veiculo.vehicle_photo)
+                stmt.setString(6, veiculo.brand)
+                stmt.setString(7, veiculo.vehicle_type)
+                stmt.setString(8, veiculo.maintenance_date)
                 stmt.executeUpdate() > 0
             }
         }
@@ -22,12 +31,18 @@ fun adicionarVeiculoNoBanco(providerId: Int, name: String, plate: String, status
     }
 }
 
-// 2. LER (GET)
+// 2. LER (GET) - Empacotando e retornando a 'ProviderVehicleResponse'
 fun buscarVeiculosDaOficina(providerId: Int): List<ProviderVehicleResponse> {
     val lista = mutableListOf<ProviderVehicleResponse>()
     return try {
         DatabaseConfig.getConnection().use { conn ->
-            val sql = "SELECT id, provider_id, name, plate, status, vehicle_photo, is_active FROM provider_vehicles WHERE provider_id = ? AND is_active = 1 ORDER BY id DESC"
+            val sql = """
+                SELECT id, provider_id, name, brand, vehicle_type, maintenance_date, plate, status, vehicle_photo, is_active 
+                FROM provider_vehicles 
+                WHERE provider_id = ? AND is_active = 1 
+                ORDER BY id DESC
+            """.trimIndent()
+
             conn.prepareStatement(sql).use { stmt ->
                 stmt.setInt(1, providerId)
                 stmt.executeQuery().use { rs ->
@@ -40,7 +55,11 @@ fun buscarVeiculosDaOficina(providerId: Int): List<ProviderVehicleResponse> {
                                 plate = rs.getString("plate"),
                                 status = rs.getString("status"),
                                 vehicle_photo = rs.getString("vehicle_photo"),
-                                is_active = rs.getBoolean("is_active")
+                                is_active = rs.getBoolean("is_active"),
+                                // Novos campos:
+                                brand = rs.getString("brand"),
+                                vehicle_type = rs.getString("vehicle_type"),
+                                maintenance_date = rs.getString("maintenance_date")
                             )
                         )
                     }
@@ -54,7 +73,7 @@ fun buscarVeiculosDaOficina(providerId: Int): List<ProviderVehicleResponse> {
     }
 }
 
-// 3. ATUALIZAR STATUS (PATCH)
+// 3. ATUALIZAR STATUS RÁPIDO (PATCH) - Para ativar/desativar o veículo rapidamente
 fun atualizarStatusVeiculoNoBanco(id: Int, providerId: Int, status: String): Boolean {
     return try {
         DatabaseConfig.getConnection().use { conn ->
@@ -72,11 +91,10 @@ fun atualizarStatusVeiculoNoBanco(id: Int, providerId: Int, status: String): Boo
     }
 }
 
-// 4. EXCLUIR / SOFT DELETE (DELETE)
+// 4. EXCLUIR / SOFT DELETE (DELETE) - Apenas esconde da lista (is_active = 0)
 fun excluirVeiculoNoBanco(id: Int, providerId: Int): Boolean {
     return try {
         DatabaseConfig.getConnection().use { conn ->
-            // Usamos Soft Delete (is_active = 0) para não quebrar históricos de resgates passados
             val sql = "UPDATE provider_vehicles SET is_active = 0, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND provider_id = ?"
             conn.prepareStatement(sql).use { stmt ->
                 stmt.setInt(1, id)
@@ -90,27 +108,42 @@ fun excluirVeiculoNoBanco(id: Int, providerId: Int): Boolean {
     }
 }
 
-fun atualizarDadosVeiculoNoBanco(id: Int, providerId: Int, name: String, plate: String, photoBase64: String?): Boolean {
+// 5. ATUALIZAR DADOS COMPLETOS DO VEÍCULO (PUT) - Usando a Data Class 'VeiculoRequest'
+fun atualizarDadosVeiculoNoBanco(providerId: Int, veiculo: VeiculoRequest): Boolean {
+    // 🛡️ Trava de segurança: Para atualizar, o ID do veículo não pode ser nulo!
+    if (veiculo.id == null) return false
+
     return try {
         DatabaseConfig.getConnection().use { conn ->
-            // Se veio foto nova, atualiza tudo. Se não veio, atualiza só nome e placa.
-            val sql = if (!photoBase64.isNullOrBlank()) {
-                "UPDATE provider_vehicles SET name = ?, plate = ?, vehicle_photo = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND provider_id = ?"
+            // Se veio uma foto nova, atualizamos ela. Se não, mantemos a que já estava.
+            val sql = if (!veiculo.vehicle_photo.isNullOrBlank()) {
+                """
+                UPDATE provider_vehicles 
+                SET name = ?, plate = ?, brand = ?, vehicle_type = ?, maintenance_date = ?, vehicle_photo = ?, updated_at = CURRENT_TIMESTAMP 
+                WHERE id = ? AND provider_id = ?
+                """
             } else {
-                "UPDATE provider_vehicles SET name = ?, plate = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND provider_id = ?"
+                """
+                UPDATE provider_vehicles 
+                SET name = ?, plate = ?, brand = ?, vehicle_type = ?, maintenance_date = ?, updated_at = CURRENT_TIMESTAMP 
+                WHERE id = ? AND provider_id = ?
+                """
             }
 
-            conn.prepareStatement(sql).use { stmt ->
-                stmt.setString(1, name)
-                stmt.setString(2, plate)
+            conn.prepareStatement(sql.trimIndent()).use { stmt ->
+                stmt.setString(1, veiculo.name)
+                stmt.setString(2, veiculo.plate)
+                stmt.setString(3, veiculo.brand)
+                stmt.setString(4, veiculo.vehicle_type)
+                stmt.setString(5, veiculo.maintenance_date)
 
-                if (!photoBase64.isNullOrBlank()) {
-                    stmt.setString(3, photoBase64)
-                    stmt.setInt(4, id)
-                    stmt.setInt(5, providerId)
+                if (!veiculo.vehicle_photo.isNullOrBlank()) {
+                    stmt.setString(6, veiculo.vehicle_photo)
+                    stmt.setInt(7, veiculo.id)
+                    stmt.setInt(8, providerId)
                 } else {
-                    stmt.setInt(3, id)
-                    stmt.setInt(4, providerId)
+                    stmt.setInt(6, veiculo.id)
+                    stmt.setInt(7, providerId)
                 }
                 stmt.executeUpdate() > 0
             }
