@@ -14,7 +14,8 @@ data class ProviderVehicleResponse(
 )
 
 data class VeiculoRequest(
-    val id: Int? = null, // É nulo quando vai criar um novo; vem preenchido quando vai atualizar
+    val id: Int? = null,
+    val provider_id: Int? = null,
     val name: String,
     val plate: String,
     val status: String? = "Disponível",

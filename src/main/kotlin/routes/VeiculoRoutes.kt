@@ -1,6 +1,7 @@
 package com.example.routes
 
 import com.example.database.*
+import com.example.models.VeiculoRequest
 import io.ktor.http.*
 import io.ktor.server.application.*
 import io.ktor.server.request.*
@@ -22,27 +23,30 @@ fun Route.veiculoRoutes() {
 
     // CRIAR: Cadastra um novo guincho/moto
     post("/adicionar-veiculo") {
-        val campos = call.receive<Map<String, String?>>()
-        val providerId = campos["provider_id"]?.toIntOrNull()
-        val name = campos["name"]
-        val plate = campos["plate"]
-        val status = campos["status"] ?: "Disponível"
-        val photoBase64 = campos["vehicle_photo"]
+        try {
+            // 🔥 Ktor converte o JSON automaticamente para VeiculoRequest
+            val veiculo = call.receive<VeiculoRequest>()
+            val providerId = veiculo.provider_id
 
-        if (providerId == null || name.isNullOrBlank() || plate.isNullOrBlank()) {
-            call.respond(HttpStatusCode.BadRequest, mapOf("sucesso" to false, "mensagem" to "Campos obrigatórios ausentes (provider_id, name, plate)"))
-            return@post
-        }
+            if (providerId == null || veiculo.name.isBlank() || veiculo.plate.isBlank()) {
+                call.respond(HttpStatusCode.BadRequest, mapOf("sucesso" to false, "mensagem" to "Campos obrigatórios ausentes"))
+                return@post
+            }
 
-        val sucesso = adicionarVeiculoNoBanco(providerId, name, plate, status, photoBase64)
-        if (sucesso) {
-            call.respond(HttpStatusCode.Created, mapOf("sucesso" to true, "mensagem" to "Veículo cadastrado com sucesso!"))
-        } else {
-            call.respond(HttpStatusCode.InternalServerError, mapOf("sucesso" to false, "mensagem" to "Erro ao salvar veículo no banco"))
+            // Chama o repositório enviando os 2 argumentos
+            val sucesso = adicionarVeiculoNoBanco(providerId, veiculo)
+
+            if (sucesso) {
+                call.respond(HttpStatusCode.Created, mapOf("sucesso" to true, "mensagem" to "Veículo cadastrado com sucesso!"))
+            } else {
+                call.respond(HttpStatusCode.InternalServerError, mapOf("sucesso" to false, "mensagem" to "Erro ao salvar veículo no banco"))
+            }
+        } catch (e: Exception) {
+            call.respond(HttpStatusCode.BadRequest, mapOf("sucesso" to false, "mensagem" to "Erro: ${e.message}"))
         }
     }
 
-    // ATUALIZAR: Muda o status (Ex: de 'Disponível' para 'Em atendimento')
+    // ATUALIZAR STATUS (Rápido): Muda o status (Ex: de 'Disponível' para 'Em atendimento')
     patch("/atualizar-status-veiculo/{id}") {
         val id = call.parameters["id"]?.toIntOrNull()
         val campos = call.receive<Map<String, String>>()
@@ -62,7 +66,7 @@ fun Route.veiculoRoutes() {
         }
     }
 
-    // EXCLUIR: Remove o veículo da lista
+    // EXCLUIR: Remove o veículo da lista (Soft Delete)
     delete("/excluir-veiculo/{id}/{providerId}") {
         val id = call.parameters["id"]?.toIntOrNull()
         val providerId = call.parameters["providerId"]?.toIntOrNull()
@@ -80,25 +84,31 @@ fun Route.veiculoRoutes() {
         }
     }
 
+    // ATUALIZAR DADOS COMPLETOS: Edita nome, placa, marca, foto, etc.
     put("/atualizar-veiculo/{id}") {
-        val id = call.parameters["id"]?.toIntOrNull()
-        val campos = call.receive<Map<String, String?>>()
-        val providerId = campos["provider_id"]?.toIntOrNull()
-        val name = campos["name"]
-        val plate = campos["plate"]
-        val photoBase64 = campos["vehicle_photo"]
+        try {
+            val id = call.parameters["id"]?.toIntOrNull()
+            val veiculo = call.receive<VeiculoRequest>()
 
-        if (id == null || providerId == null || name.isNullOrBlank() || plate.isNullOrBlank()) {
-            call.respond(HttpStatusCode.BadRequest, mapOf("sucesso" to false, "mensagem" to "Dados incompletos"))
-            return@put
-        }
+            // Verifica se o ID e o providerId existem
+            if (id == null || veiculo.provider_id == null) {
+                call.respond(HttpStatusCode.BadRequest, mapOf("sucesso" to false, "mensagem" to "ID do veículo ou da oficina ausentes"))
+                return@put
+            }
 
-        val sucesso = atualizarDadosVeiculoNoBanco(id, providerId, name, plate, photoBase64)
-        if (sucesso) {
-            call.respond(HttpStatusCode.OK, mapOf("sucesso" to true, "mensagem" to "Veículo atualizado!"))
-        } else {
-            call.respond(HttpStatusCode.InternalServerError, mapOf("sucesso" to false, "mensagem" to "Erro ao atualizar"))
+            // 🔥 Injeta o ID da URL no objeto do veículo para não ter erro na hora de salvar
+            val veiculoAtualizado = veiculo.copy(id = id)
+
+            // Chama o repositório enviando os 2 argumentos corretos!
+            val sucesso = atualizarDadosVeiculoNoBanco(veiculoAtualizado.provider_id!!, veiculoAtualizado)
+
+            if (sucesso) {
+                call.respond(HttpStatusCode.OK, mapOf("sucesso" to true, "mensagem" to "Veículo atualizado!"))
+            } else {
+                call.respond(HttpStatusCode.InternalServerError, mapOf("sucesso" to false, "mensagem" to "Erro ao atualizar"))
+            }
+        } catch (e: Exception) {
+            call.respond(HttpStatusCode.BadRequest, mapOf("sucesso" to false, "mensagem" to "Erro na formatação: ${e.message}"))
         }
     }
 }
-
