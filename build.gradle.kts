@@ -28,6 +28,10 @@ dependencies {
 
     implementation("org.mindrot:jbcrypt:0.4")
 
+    // para connection pool
+
+    implementation("com.zaxxer:HikariCP:5.1.0")
+
     implementation("ch.qos.logback:logback-classic:1.4.14")
     implementation("io.ktor:ktor-server-websockets-jvm:2.3.10")
 
