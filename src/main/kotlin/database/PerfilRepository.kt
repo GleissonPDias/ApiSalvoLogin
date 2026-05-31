@@ -14,11 +14,12 @@ fun atualizarPerfilNoBanco(userId: Int, campos: Map<String, String>): Boolean {
             if (!rs.next()) return false
             val role = rs.getString("user_role").lowercase()
 
-            // 2. Colunas permitidas (Mantido igual ao seu original)
+            // 2. Colunas permitidas (🔥 FOTO_1 E FOTO_2 ADICIONADAS AQUI!)
             val colunasPermitidas = when (role) {
                 "provider", "oficina" -> listOf(
                     "user_name", "user_cpf_cnpj", "user_address",
-                    "user_banner", "user_phone", "latitude", "longitude"
+                    "user_banner", "user_phone", "latitude", "longitude",
+                    "foto_1", "foto_2"
                 )
                 "customer", "cliente" -> listOf("user_name", "user_phone")
                 else -> emptyList()
@@ -32,7 +33,7 @@ fun atualizarPerfilNoBanco(userId: Int, campos: Map<String, String>): Boolean {
                 return false
             }
 
-            // 4. Monta a Query Dinâmica (Ex: "user_address = ?, latitude = ?, longitude = ?")
+            // 4. Monta a Query Dinâmica
             val colunasSql = camposValidos.keys.joinToString(", ") { "$it = ?" }
             val sqlUpdate = "UPDATE users SET $colunasSql, updated_at = CURRENT_TIMESTAMP WHERE user_id = ?"
 
@@ -58,13 +59,15 @@ fun atualizarPerfilNoBanco(userId: Int, campos: Map<String, String>): Boolean {
 fun buscarPerfilNoBanco(id: Int): Map<String, Any?>? {
     return try {
         DatabaseConfig.getConnection().use { conn ->
-            // Query poderosa que busca os dados do usuário e já calcula a média de notas da tabela service_reviews
+            // Query poderosa que busca os dados (🔥 FOTO_1 E FOTO_2 ADICIONADAS AQUI!)
             val sql = """
                 SELECT 
                     u.user_name, 
                     u.user_cpf_cnpj, 
                     u.user_address, 
                     u.user_banner,
+                    u.foto_1,
+                    u.foto_2,
                     COALESCE(AVG(sr.rating), 5.0) AS media_notas,
                     COUNT(sr.id) AS total_reviews
                 FROM users u
@@ -86,6 +89,8 @@ fun buscarPerfilNoBanco(id: Int): Map<String, Any?>? {
                     "cnpj" to rs.getString("user_cpf_cnpj"),
                     "endereco" to rs.getString("user_address"),
                     "banner" to rs.getString("user_banner"),
+                    "foto_1" to rs.getString("foto_1"), // 🔥 Mapeado para o Android!
+                    "foto_2" to rs.getString("foto_2"), // 🔥 Mapeado para o Android!
                     "rating" to mediaFormatada,
                     "reviews" to rs.getInt("total_reviews")
                 )
@@ -115,4 +120,3 @@ fun atualizarStatusOnline(providerId: Int, isOnline: Boolean): Boolean {
         false
     }
 }
-
