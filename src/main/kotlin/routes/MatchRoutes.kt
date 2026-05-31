@@ -64,7 +64,7 @@ fun Route.matchRoutes() {
                                 "defeito": "🔧 ${pedido.description}",
                                 "preco": "R$ ${String.format("%.2f", oficina.preco).replace(".", ",")}",
                                 "distanciaText": "Distância: ${oficina.distanciaKm} km  •  ~${oficina.minutosEstimados} min",
-                                "clienteNome": "Cliente ID: ${pedido.customerId}",
+                                "clienteNome": "${pedido.clienteNome}",
                                 "clienteNota": "⭐ 4.9 (Nova solicitação)"
                             }
                         """.trimIndent()
