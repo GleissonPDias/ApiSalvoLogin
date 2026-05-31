@@ -194,7 +194,7 @@ fun buscarHistoricoDaOficina(providerId: Int): List<PedidosResponse> {
                 LEFT JOIN users c ON sr.customer_id = c.user_id          -- Perfil do Cliente
                 LEFT JOIN customer_vehicles cv ON sr.vehicle_id = cv.id
                 LEFT JOIN provider_vehicles pv ON sr.provider_vehicle_id = pv.id
-                WHERE sr.assigned_provider_id = ? AND sr.status IN ('accepted', 'en_route', 'arrived', 'in_progress', 'completed')
+                WHERE sr.assigned_provider_id = ? AND sr.status IN ('accepted', 'en_route', 'arrived', 'in_progress', 'completed', 'canceled')
                 ORDER BY sr.created_at DESC
             """.trimIndent()
 
