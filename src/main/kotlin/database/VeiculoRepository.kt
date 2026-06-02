@@ -153,3 +153,117 @@ fun atualizarDadosVeiculoNoBanco(providerId: Int, veiculo: VeiculoRequest): Bool
         false
     }
 }
+
+// ================================================================
+// REPOSITÓRIO: VEÍCULOS DOS CLIENTES (customer_vehicles)
+// ================================================================
+
+// 1. CRIAR VEÍCULO DO CLIENTE
+fun adicionarVeiculoClienteNoBanco(customerId: Int, nome: String, placa: String, foto: String?): Boolean {
+    return try {
+        DatabaseConfig.getConnection().use { conn ->
+            val sql = """
+                INSERT INTO customer_vehicles 
+                (customer_id, name, plate, vehicle_photo, status, is_active) 
+                VALUES (?, ?, ?, ?, 'Disponível', 1)
+            """.trimIndent()
+
+            conn.prepareStatement(sql).use { stmt ->
+                stmt.setInt(1, customerId)
+                stmt.setString(2, nome)
+                stmt.setString(3, placa)
+                stmt.setString(4, foto)
+                stmt.executeUpdate() > 0
+            }
+        }
+    } catch (e: Exception) {
+        println("Erro adicionarVeiculoCliente: ${e.message}")
+        false
+    }
+}
+
+// 2. BUSCAR VEÍCULOS DO CLIENTE
+fun buscarVeiculosDoCliente(customerId: Int): List<ProviderVehicleResponse> {
+    val lista = mutableListOf<ProviderVehicleResponse>()
+    return try {
+        DatabaseConfig.getConnection().use { conn ->
+            val sql = """
+                SELECT id, customer_id, name, plate, vehicle_photo, status, is_active 
+                FROM customer_vehicles 
+                WHERE customer_id = ? AND is_active = 1 
+                ORDER BY id DESC
+            """.trimIndent()
+
+            conn.prepareStatement(sql).use { stmt ->
+                stmt.setInt(1, customerId)
+                stmt.executeQuery().use { rs ->
+                    while (rs.next()) {
+                        lista.add(
+                            ProviderVehicleResponse(
+                                id = rs.getInt("id"),
+                                provider_id = rs.getInt("customer_id"), // Reutilizamos a var do modelo
+                                name = rs.getString("name"),
+                                plate = rs.getString("plate"),
+                                status = rs.getString("status"),
+                                vehicle_photo = rs.getString("vehicle_photo"),
+                                is_active = rs.getBoolean("is_active")
+                            )
+                        )
+                    }
+                }
+            }
+            lista
+        }
+    } catch (e: Exception) {
+        println("Erro buscarVeiculosDoCliente: ${e.message}")
+        emptyList()
+    }
+}
+
+// 3. EXCLUIR VEÍCULO DO CLIENTE (Soft Delete)
+fun excluirVeiculoClienteNoBanco(id: Int, customerId: Int): Boolean {
+    return try {
+        DatabaseConfig.getConnection().use { conn ->
+            val sql = "UPDATE customer_vehicles SET is_active = 0, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND customer_id = ?"
+            conn.prepareStatement(sql).use { stmt ->
+                stmt.setInt(1, id)
+                stmt.setInt(2, customerId)
+                stmt.executeUpdate() > 0
+            }
+        }
+    } catch (e: Exception) {
+        println("Erro excluirVeiculoCliente: ${e.message}")
+        false
+    }
+}
+
+// 4. ATUALIZAR DADOS VEÍCULO DO CLIENTE
+fun atualizarDadosVeiculoClienteNoBanco(id: Int, customerId: Int, nome: String, placa: String, foto: String?): Boolean {
+    return try {
+        DatabaseConfig.getConnection().use { conn ->
+            val sql = if (!foto.isNullOrBlank()) {
+                "UPDATE customer_vehicles SET name = ?, plate = ?, vehicle_photo = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND customer_id = ?"
+            } else {
+                "UPDATE customer_vehicles SET name = ?, plate = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND customer_id = ?"
+            }
+
+            conn.prepareStatement(sql).use { stmt ->
+                stmt.setString(1, nome)
+                stmt.setString(2, placa)
+
+                if (!foto.isNullOrBlank()) {
+                    stmt.setString(3, foto)
+                    stmt.setInt(4, id)
+                    stmt.setInt(5, customerId)
+                } else {
+                    stmt.setInt(3, id)
+                    stmt.setInt(4, customerId)
+                }
+                stmt.executeUpdate() > 0
+            }
+        }
+    } catch (e: Exception) {
+        println("Erro atualizarDadosVeiculoCliente: ${e.message}")
+        false
+    }
+}

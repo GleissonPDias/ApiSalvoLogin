@@ -111,4 +111,89 @@ fun Route.veiculoRoutes() {
             call.respond(HttpStatusCode.BadRequest, mapOf("sucesso" to false, "mensagem" to "Erro na formatação: ${e.message}"))
         }
     }
+// ================================================================
+    // ROTAS: VEÍCULOS DOS CLIENTES (customer_vehicles)
+    // ================================================================
+
+    // LER: Retorna os veículos do cliente
+    get("/veiculos-cliente/{customerId}") {
+        val customerId = call.parameters["customerId"]?.toIntOrNull()
+        if (customerId == null) {
+            call.respond(HttpStatusCode.BadRequest, mapOf("sucesso" to false, "mensagem" to "ID do cliente inválido"))
+            return@get
+        }
+        val veiculos = buscarVeiculosDoCliente(customerId)
+        call.respond(HttpStatusCode.OK, veiculos)
+    }
+
+    // CRIAR: Cadastra um novo carro pro cliente
+    post("/adicionar-veiculo-cliente") {
+        try {
+            val dados = call.receive<Map<String, String?>>()
+            val customerId = dados["customer_id"]?.toIntOrNull()
+            val nome = dados["name"]
+            val placa = dados["plate"]
+            val foto = dados["vehicle_photo"]
+
+            if (customerId == null || nome.isNullOrBlank() || placa.isNullOrBlank()) {
+                call.respond(HttpStatusCode.BadRequest, mapOf("sucesso" to false, "mensagem" to "Campos obrigatórios ausentes"))
+                return@post
+            }
+
+            val sucesso = adicionarVeiculoClienteNoBanco(customerId, nome, placa, foto)
+
+            if (sucesso) {
+                call.respond(HttpStatusCode.Created, mapOf("sucesso" to true, "mensagem" to "Veículo do cliente cadastrado!"))
+            } else {
+                call.respond(HttpStatusCode.InternalServerError, mapOf("sucesso" to false, "mensagem" to "Erro ao salvar no banco"))
+            }
+        } catch (e: Exception) {
+            call.respond(HttpStatusCode.BadRequest, mapOf("sucesso" to false, "mensagem" to "Erro: ${e.message}"))
+        }
+    }
+
+    // ATUALIZAR: Edita o carro do cliente
+    put("/atualizar-veiculo-cliente/{id}") {
+        try {
+            val id = call.parameters["id"]?.toIntOrNull()
+            val dados = call.receive<Map<String, String?>>()
+            val customerId = dados["customer_id"]?.toIntOrNull()
+            val nome = dados["name"]
+            val placa = dados["plate"]
+            val foto = dados["vehicle_photo"]
+
+            if (id == null || customerId == null || nome.isNullOrBlank() || placa.isNullOrBlank()) {
+                call.respond(HttpStatusCode.BadRequest, mapOf("sucesso" to false, "mensagem" to "Campos inválidos para atualização"))
+                return@put
+            }
+
+            val sucesso = atualizarDadosVeiculoClienteNoBanco(id, customerId, nome, placa, foto)
+
+            if (sucesso) {
+                call.respond(HttpStatusCode.OK, mapOf("sucesso" to true, "mensagem" to "Veículo do cliente atualizado!"))
+            } else {
+                call.respond(HttpStatusCode.InternalServerError, mapOf("sucesso" to false, "mensagem" to "Erro ao atualizar no banco"))
+            }
+        } catch (e: Exception) {
+            call.respond(HttpStatusCode.BadRequest, mapOf("sucesso" to false, "mensagem" to "Erro: ${e.message}"))
+        }
+    }
+
+    // EXCLUIR: Remove o carro da lista do cliente
+    delete("/excluir-veiculo-cliente/{id}/{customerId}") {
+        val id = call.parameters["id"]?.toIntOrNull()
+        val customerId = call.parameters["customerId"]?.toIntOrNull()
+
+        if (id == null || customerId == null) {
+            call.respond(HttpStatusCode.BadRequest, mapOf("sucesso" to false, "mensagem" to "IDs inválidos"))
+            return@delete
+        }
+
+        val sucesso = excluirVeiculoClienteNoBanco(id, customerId)
+        if (sucesso) {
+            call.respond(HttpStatusCode.OK, mapOf("sucesso" to true, "mensagem" to "Veículo do cliente excluído!"))
+        } else {
+            call.respond(HttpStatusCode.InternalServerError, mapOf("sucesso" to false, "mensagem" to "Erro ao excluir veículo"))
+        }
+    }
 }
