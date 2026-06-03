@@ -158,28 +158,22 @@ fun atualizarDadosVeiculoNoBanco(providerId: Int, veiculo: VeiculoRequest): Bool
 // REPOSITÓRIO: VEÍCULOS DOS CLIENTES (customer_vehicles)
 // ================================================================
 
-// 1. CRIAR VEÍCULO DO CLIENTE
-fun adicionarVeiculoClienteNoBanco(customerId: Int, modelo: String, placa: String, foto: String?): Boolean {
-    return try {
-        DatabaseConfig.getConnection().use { conn ->
-            // Adequado exatamente para as colunas: customer_id, model, plate, is_active
-            val sql = """
-                INSERT INTO customer_vehicles 
-                (customer_id, model, plate, is_active) 
-                VALUES (?, ?, ?, 1)
-            """.trimIndent()
+// 1. CRIAR VEÍCULO DO CLIENTE (Corrigido com colunas obrigatórias)
+fun adicionarVeiculoClienteNoBanco(customerId: Int, modelo: String, placa: String) {
+    DatabaseConfig.getConnection().use { conn ->
+        // 🚀 AQUI: Adicionamos vehicle_type, brand e color para satisfazer as regras do banco!
+        val sql = """
+            INSERT INTO customer_vehicles 
+            (customer_id, model, plate, is_active, vehicle_type, brand, color) 
+            VALUES (?, ?, ?, 1, 'Carro', 'Não informada', 'Não informada')
+        """.trimIndent()
 
-            conn.prepareStatement(sql).use { stmt ->
-                stmt.setInt(1, customerId)
-                stmt.setString(2, modelo)
-                stmt.setString(3, placa)
-                // Não inserimos a foto porque a coluna vehicle_photo não existe na tabela
-                stmt.executeUpdate() > 0
-            }
+        conn.prepareStatement(sql).use { stmt ->
+            stmt.setInt(1, customerId)
+            stmt.setString(2, modelo)
+            stmt.setString(3, placa)
+            stmt.executeUpdate()
         }
-    } catch (e: Exception) {
-        println("Erro adicionarVeiculoCliente: ${e.message}")
-        false
     }
 }
 
