@@ -243,24 +243,15 @@ fun excluirVeiculoClienteNoBanco(id: Int, customerId: Int): Boolean {
 fun atualizarDadosVeiculoClienteNoBanco(id: Int, customerId: Int, nome: String, placa: String, foto: String?): Boolean {
     return try {
         DatabaseConfig.getConnection().use { conn ->
-            val sql = if (!foto.isNullOrBlank()) {
-                "UPDATE customer_vehicles SET name = ?, plate = ?, vehicle_photo = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND customer_id = ?"
-            } else {
-                "UPDATE customer_vehicles SET name = ?, plate = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND customer_id = ?"
-            }
-
+            // Atualizamos para usar 'model' em vez de 'name', e removemos a 'vehicle_photo'
+            val sql = "UPDATE customer_vehicles SET model = ?, plate = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND customer_id = ?"
+            
             conn.prepareStatement(sql).use { stmt ->
-                stmt.setString(1, nome)
+                stmt.setString(1, nome) // O Kotlin chama de 'nome', mas o SQL salva em 'model'
                 stmt.setString(2, placa)
-
-                if (!foto.isNullOrBlank()) {
-                    stmt.setString(3, foto)
-                    stmt.setInt(4, id)
-                    stmt.setInt(5, customerId)
-                } else {
-                    stmt.setInt(3, id)
-                    stmt.setInt(4, customerId)
-                }
+                stmt.setInt(3, id)
+                stmt.setInt(4, customerId)
+                
                 stmt.executeUpdate() > 0
             }
         }
