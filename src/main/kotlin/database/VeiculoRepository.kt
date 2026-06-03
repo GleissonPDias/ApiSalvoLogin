@@ -159,19 +159,21 @@ fun atualizarDadosVeiculoNoBanco(providerId: Int, veiculo: VeiculoRequest): Bool
 // ================================================================
 
 // 1. CRIAR VEÍCULO DO CLIENTE (Corrigido com colunas obrigatórias)
-fun adicionarVeiculoClienteNoBanco(customerId: Int, modelo: String, placa: String) {
+fun adicionarVeiculoClienteNoBanco(customerId: Int, modelo: String, placa: String, marca: String, cor: String, tipo: String) {
     DatabaseConfig.getConnection().use { conn ->
-        // 🚀 AQUI: Adicionamos vehicle_type, brand e color para satisfazer as regras do banco!
         val sql = """
             INSERT INTO customer_vehicles 
             (customer_id, model, plate, is_active, vehicle_type, brand, color) 
-            VALUES (?, ?, ?, 1, 'Carro', 'Não informada', 'Não informada')
+            VALUES (?, ?, ?, 1, ?, ?, ?)
         """.trimIndent()
 
         conn.prepareStatement(sql).use { stmt ->
             stmt.setInt(1, customerId)
             stmt.setString(2, modelo)
             stmt.setString(3, placa)
+            stmt.setString(4, tipo)   // 🚀 Injeta o valor real
+            stmt.setString(5, marca)  // 🚀 Injeta o valor real
+            stmt.setString(6, cor)    // 🚀 Injeta o valor real
             stmt.executeUpdate()
         }
     }

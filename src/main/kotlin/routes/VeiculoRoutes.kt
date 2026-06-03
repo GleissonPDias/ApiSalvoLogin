@@ -133,22 +133,21 @@ fun Route.veiculoRoutes() {
             val customerId = dados["customer_id"]?.toIntOrNull()
             val nome = dados["name"]
             val placa = dados["plate"]
-            val foto = dados["vehicle_photo"]
+            val marca = dados["brand"] ?: "Não informada"        // 🚀 Pega do Android
+            val cor = dados["color"] ?: "Não informada"          // 🚀 Pega do Android
+            val tipo = dados["vehicle_type"] ?: "Carro"          // 🚀 Pega do Android
 
             if (customerId == null || nome.isNullOrBlank() || placa.isNullOrBlank()) {
                 call.respond(HttpStatusCode.BadRequest, mapOf("sucesso" to false, "mensagem" to "Campos obrigatórios ausentes"))
                 return@post
             }
 
-            val sucesso = adicionarVeiculoClienteNoBanco(customerId, nome, placa, foto)
+            // Repassa os novos valores para a função do banco
+            adicionarVeiculoClienteNoBanco(customerId, nome, placa, marca, cor, tipo)
 
-            if (sucesso) {
-                call.respond(HttpStatusCode.Created, mapOf("sucesso" to true, "mensagem" to "Veículo do cliente cadastrado!"))
-            } else {
-                call.respond(HttpStatusCode.InternalServerError, mapOf("sucesso" to false, "mensagem" to "Erro ao salvar no banco"))
-            }
+            call.respond(HttpStatusCode.Created, mapOf("sucesso" to true, "mensagem" to "Veículo do cliente cadastrado!"))
         } catch (e: Exception) {
-            call.respond(HttpStatusCode.BadRequest, mapOf("sucesso" to false, "mensagem" to "Erro: ${e.message}"))
+            call.respond(HttpStatusCode.InternalServerError, mapOf("sucesso" to false, "mensagem" to "Erro: ${e.message}"))
         }
     }
 
