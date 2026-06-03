@@ -159,20 +159,21 @@ fun atualizarDadosVeiculoNoBanco(providerId: Int, veiculo: VeiculoRequest): Bool
 // ================================================================
 
 // 1. CRIAR VEÍCULO DO CLIENTE
-fun adicionarVeiculoClienteNoBanco(customerId: Int, nome: String, placa: String, foto: String?): Boolean {
+fun adicionarVeiculoClienteNoBanco(customerId: Int, modelo: String, placa: String, foto: String?): Boolean {
     return try {
         DatabaseConfig.getConnection().use { conn ->
+            // Adequado exatamente para as colunas: customer_id, model, plate, is_active
             val sql = """
                 INSERT INTO customer_vehicles 
-                (customer_id, name, plate, vehicle_photo, status, is_active) 
-                VALUES (?, ?, ?, ?, 'Disponível', 1)
+                (customer_id, model, plate, is_active) 
+                VALUES (?, ?, ?, 1)
             """.trimIndent()
 
             conn.prepareStatement(sql).use { stmt ->
                 stmt.setInt(1, customerId)
-                stmt.setString(2, nome)
+                stmt.setString(2, modelo)
                 stmt.setString(3, placa)
-                stmt.setString(4, foto)
+                // Não inserimos a foto porque a coluna vehicle_photo não existe na tabela
                 stmt.executeUpdate() > 0
             }
         }
@@ -187,8 +188,9 @@ fun buscarVeiculosDoCliente(customerId: Int): List<ProviderVehicleResponse> {
     val lista = mutableListOf<ProviderVehicleResponse>()
     return try {
         DatabaseConfig.getConnection().use { conn ->
+            // Trocado 'name' por 'model' e removido 'status' e 'vehicle_photo'
             val sql = """
-                SELECT id, customer_id, name, plate, vehicle_photo, status, is_active 
+                SELECT id, customer_id, model, plate, is_active 
                 FROM customer_vehicles 
                 WHERE customer_id = ? AND is_active = 1 
                 ORDER BY id DESC
@@ -201,11 +203,11 @@ fun buscarVeiculosDoCliente(customerId: Int): List<ProviderVehicleResponse> {
                         lista.add(
                             ProviderVehicleResponse(
                                 id = rs.getInt("id"),
-                                provider_id = rs.getInt("customer_id"), // Reutilizamos a var do modelo
-                                name = rs.getString("name"),
+                                provider_id = rs.getInt("customer_id"),
+                                name = rs.getString("model"), // Mapeia a coluna 'model' pro campo 'name' do Kotlin
                                 plate = rs.getString("plate"),
-                                status = rs.getString("status"),
-                                vehicle_photo = rs.getString("vehicle_photo"),
+                                status = "Ativo", // Força um status genérico já que não tem na tabela
+                                vehicle_photo = "", // Retorna vazio já que não tem na tabela
                                 is_active = rs.getBoolean("is_active")
                             )
                         )
