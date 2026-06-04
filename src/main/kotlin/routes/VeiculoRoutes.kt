@@ -195,4 +195,31 @@ fun Route.veiculoRoutes() {
             call.respond(HttpStatusCode.InternalServerError, mapOf("sucesso" to false, "mensagem" to "Erro ao excluir veículo"))
         }
     }
+
+    // ================================================================
+    // AVALIAÇÃO DO SERVIÇO
+    // ================================================================
+    post("/avaliar-pedido") {
+        try {
+            val dados = call.receive<Map<String, String>>()
+            val pedidoId = dados["pedidoId"]?.toIntOrNull()
+            val nota = dados["nota"]?.toIntOrNull()
+            val comentario = dados["comentario"] ?: ""
+
+            if (pedidoId == null || nota == null) {
+                call.respond(HttpStatusCode.BadRequest, mapOf("sucesso" to false, "mensagem" to "Dados incompletos"))
+                return@post
+            }
+
+            val sucesso = salvarAvaliacaoNoBanco(pedidoId, nota, comentario)
+
+            if (sucesso) {
+                call.respond(HttpStatusCode.OK, mapOf("sucesso" to true, "mensagem" to "Avaliação salva com sucesso!"))
+            } else {
+                call.respond(HttpStatusCode.InternalServerError, mapOf("sucesso" to false, "mensagem" to "Erro ao salvar avaliação"))
+            }
+        } catch (e: Exception) {
+            call.respond(HttpStatusCode.InternalServerError, mapOf("sucesso" to false, "mensagem" to e.message))
+        }
+    }
 }

@@ -256,3 +256,32 @@ fun atualizarDadosVeiculoClienteNoBanco(id: Int, customerId: Int, nome: String, 
         false
     }
 }
+
+// ================================================================
+// REPOSITÓRIO: AVALIAÇÃO DE PEDIDOS
+// ================================================================
+fun salvarAvaliacaoNoBanco(pedidoId: Int, nota: Int, comentario: String): Boolean {
+    return try {
+        DatabaseConfig.getConnection().use { conn ->
+            // 🚀 TRUQUE MÁGICO DO SQL: 
+            // Inserimos na service_reviews copiando o cliente e o prestador direto da service_requests!
+            val sql = """
+                INSERT INTO service_reviews (request_id, customer_id, provider_id, rating, comment)
+                SELECT id, customer_id, assigned_provider_id, ?, ?
+                FROM service_requests
+                WHERE id = ?
+            """.trimIndent()
+            
+            conn.prepareStatement(sql).use { stmt ->
+                stmt.setInt(1, nota)           // Primeiro '?' -> rating
+                stmt.setString(2, comentario)  // Segundo '?' -> comment
+                stmt.setInt(3, pedidoId)       // Terceiro '?' -> WHERE id = ?
+                
+                stmt.executeUpdate() > 0
+            }
+        }
+    } catch (e: Exception) {
+        println("Erro salvarAvaliacao: ${e.message}")
+        false
+    }
+}
