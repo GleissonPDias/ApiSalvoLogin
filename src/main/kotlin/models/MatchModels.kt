@@ -3,6 +3,7 @@ package com.example.models
 data class PedidoSocorroRequest(
     val customerId: Int,
     val clienteNome: String? = "Cliente",
+    val vehicleCustomer: String,
     val latitude: Double,
     val longitude: Double,
     val serviceType: String,

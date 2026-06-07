@@ -2,6 +2,7 @@ package com.example.routes
 
 import com.example.database.solicitarSocorroRadar
 import com.example.database.DatabaseConfig
+import com.example.database.obterDadosVeiculoCliente
 import com.example.models.PedidoSocorroRequest
 import com.example.models.PedidoSocorroResponse
 import io.ktor.http.*
@@ -49,6 +50,7 @@ fun Route.matchRoutes() {
 
                 // 🚀 WEBSOCKET: ENVIO DINÂMICO PARA CADA OFICINA
                 val matches = resposta.prestadoresMatch ?: emptyList()
+                val infoVeiculo = obterDadosVeiculoCliente(pedido.vehicleId)
 
                 for (oficina in matches) {
                     val sessaoMecanico = prestadoresConectados[oficina.providerId]
@@ -60,7 +62,7 @@ fun Route.matchRoutes() {
                                 "requestId": ${idGerado},
                                 "rawPreco": ${oficina.preco},
                                 "rawDistancia": ${oficina.distanciaKm},
-                                "veiculo": "Solicitação de ${pedido.serviceType}",
+                                "veiculo": "$infoVeiculo (${pedido.serviceType})",
                                 "defeito": "🔧 ${pedido.description}",
                                 "preco": "R$ ${String.format("%.2f", oficina.preco).replace(".", ",")}",
                                 "distanciaText": "Distância: ${oficina.distanciaKm} km  •  ~${oficina.minutosEstimados} min",

@@ -285,3 +285,33 @@ fun salvarAvaliacaoNoBanco(pedidoId: Int, nota: Int, comentario: String): Boolea
         false
     }
 }
+
+// 6. BUSCAR DADOS DE VEÍCULO DO CLIENTE FORMATADOS (Usado no Radar WebSocket)
+fun obterDadosVeiculoCliente(vehicleId: Int): String {
+    return try {
+        DatabaseConfig.getConnection().use { conn ->
+            val sql = "SELECT brand, model, plate FROM customer_vehicles WHERE id = ?"
+            conn.prepareStatement(sql).use { stmt ->
+                stmt.setInt(1, vehicleId)
+                stmt.executeQuery().use { rs ->
+                    if (rs.next()) {
+                        val brand = rs.getString("brand") ?: ""
+                        val model = rs.getString("model") ?: ""
+                        val plate = rs.getString("plate") ?: ""
+                        if (brand.isNotEmpty() && model.isNotEmpty()) {
+                            "$brand $model - $plate"
+                        } else if (model.isNotEmpty()) {
+                            "$model - $plate"
+                        } else {
+                            "Placa: $plate"
+                        }
+                    } else {
+                        "Veículo não identificado"
+                    }
+                }
+            }
+        }
+    } catch (e: Exception) {
+        "Veículo não identificado"
+    }
+}
