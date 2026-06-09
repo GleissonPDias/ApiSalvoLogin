@@ -184,9 +184,8 @@ fun buscarVeiculosDoCliente(customerId: Int): List<ProviderVehicleResponse> {
     val lista = mutableListOf<ProviderVehicleResponse>()
     return try {
         DatabaseConfig.getConnection().use { conn ->
-            // Trocado 'name' por 'model' e removido 'status' e 'vehicle_photo'
             val sql = """
-                SELECT id, customer_id, model, plate, is_active 
+                SELECT id, customer_id, model, plate, is_active, brand 
                 FROM customer_vehicles 
                 WHERE customer_id = ? AND is_active = 1 
                 ORDER BY id DESC
@@ -202,9 +201,11 @@ fun buscarVeiculosDoCliente(customerId: Int): List<ProviderVehicleResponse> {
                                 provider_id = rs.getInt("customer_id"),
                                 name = rs.getString("model"), // Mapeia a coluna 'model' pro campo 'name' do Kotlin
                                 plate = rs.getString("plate"),
+                                brand = rs.getString("brand"),
                                 status = "Ativo", // Força um status genérico já que não tem na tabela
                                 vehicle_photo = "", // Retorna vazio já que não tem na tabela
                                 is_active = rs.getBoolean("is_active")
+                                
                             )
                         )
                     }
