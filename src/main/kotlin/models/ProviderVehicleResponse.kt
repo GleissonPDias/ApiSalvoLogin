@@ -10,7 +10,8 @@ data class ProviderVehicleResponse(
     val is_active: Boolean,
     val brand: String? = null,
     val vehicle_type: String? = null,
-    val maintenance_date: String? = null
+    val maintenance_date: String? = null,
+    val color: String? = null
 )
 
 data class VeiculoRequest(

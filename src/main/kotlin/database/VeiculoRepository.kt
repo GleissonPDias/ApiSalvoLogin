@@ -158,13 +158,13 @@ fun atualizarDadosVeiculoNoBanco(providerId: Int, veiculo: VeiculoRequest): Bool
 // REPOSITÓRIO: VEÍCULOS DOS CLIENTES (customer_vehicles)
 // ================================================================
 
-// 1. CRIAR VEÍCULO DO CLIENTE (Corrigido com colunas obrigatórias)
-fun adicionarVeiculoClienteNoBanco(customerId: Int, modelo: String, placa: String, marca: String, cor: String, tipo: String) {
+// 1. CRIAR VEÍCULO DO CLIENTE (Corrigido com colunas obrigatórias e foto)
+fun adicionarVeiculoClienteNoBanco(customerId: Int, modelo: String, placa: String, marca: String, cor: String, tipo: String, foto: String?) {
     DatabaseConfig.getConnection().use { conn ->
         val sql = """
             INSERT INTO customer_vehicles 
-            (customer_id, model, plate, is_active, vehicle_type, brand, color) 
-            VALUES (?, ?, ?, 1, ?, ?, ?)
+            (customer_id, model, plate, is_active, vehicle_type, brand, color, vehicle_photo) 
+            VALUES (?, ?, ?, 1, ?, ?, ?, ?)
         """.trimIndent()
 
         conn.prepareStatement(sql).use { stmt ->
@@ -174,6 +174,7 @@ fun adicionarVeiculoClienteNoBanco(customerId: Int, modelo: String, placa: Strin
             stmt.setString(4, tipo)   // 🚀 Injeta o valor real
             stmt.setString(5, marca)  // 🚀 Injeta o valor real
             stmt.setString(6, cor)    // 🚀 Injeta o valor real
+            stmt.setString(7, foto)   // 🚀 Injeta a foto do veículo
             stmt.executeUpdate()
         }
     }
@@ -185,7 +186,7 @@ fun buscarVeiculosDoCliente(customerId: Int): List<ProviderVehicleResponse> {
     return try {
         DatabaseConfig.getConnection().use { conn ->
             val sql = """
-                SELECT id, customer_id, model, plate, is_active, brand 
+                SELECT id, customer_id, model, plate, is_active, brand, color, vehicle_type, vehicle_photo 
                 FROM customer_vehicles 
                 WHERE customer_id = ? AND is_active = 1 
                 ORDER BY id DESC
@@ -201,11 +202,12 @@ fun buscarVeiculosDoCliente(customerId: Int): List<ProviderVehicleResponse> {
                                 provider_id = rs.getInt("customer_id"),
                                 name = rs.getString("model"), // Mapeia a coluna 'model' pro campo 'name' do Kotlin
                                 plate = rs.getString("plate"),
-                                brand = rs.getString("brand"),
                                 status = "Ativo", // Força um status genérico já que não tem na tabela
-                                vehicle_photo = "", // Retorna vazio já que não tem na tabela
-                                is_active = rs.getBoolean("is_active")
-                                
+                                vehicle_photo = rs.getString("vehicle_photo") ?: "", // 🔥 Agora retorna a foto real!
+                                is_active = rs.getBoolean("is_active"),
+                                brand = rs.getString("brand"), // 🔥 Mapeia a coluna brand!
+                                vehicle_type = rs.getString("vehicle_type"),
+                                color = rs.getString("color")
                             )
                         )
                     }
@@ -223,7 +225,7 @@ fun buscarVeiculosDoCliente(customerId: Int): List<ProviderVehicleResponse> {
 fun excluirVeiculoClienteNoBanco(id: Int, customerId: Int): Boolean {
     return try {
         DatabaseConfig.getConnection().use { conn ->
-            val sql = "UPDATE customer_vehicles SET is_active = 0, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND customer_id = ?"
+            val sql = "UPDATE customer_vehicles SET is_active = 0 WHERE id = ? AND customer_id = ?"
             conn.prepareStatement(sql).use { stmt ->
                 stmt.setInt(1, id)
                 stmt.setInt(2, customerId)
@@ -237,18 +239,20 @@ fun excluirVeiculoClienteNoBanco(id: Int, customerId: Int): Boolean {
 }
 
 // 4. ATUALIZAR DADOS VEÍCULO DO CLIENTE
-fun atualizarDadosVeiculoClienteNoBanco(id: Int, customerId: Int, nome: String, placa: String, foto: String?): Boolean {
+fun atualizarDadosVeiculoClienteNoBanco(id: Int, customerId: Int, nome: String, placa: String, brand: String?, color: String?, vehicleType: String?, foto: String?): Boolean {
     return try {
         DatabaseConfig.getConnection().use { conn ->
-            // Atualizamos para usar 'model' em vez de 'name', e removemos a 'vehicle_photo'
-            val sql = "UPDATE customer_vehicles SET model = ?, plate = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND customer_id = ?"
+            val sql = "UPDATE customer_vehicles SET model = ?, plate = ?, brand = ?, color = ?, vehicle_type = ?, vehicle_photo = ? WHERE id = ? AND customer_id = ?"
             
             conn.prepareStatement(sql).use { stmt ->
                 stmt.setString(1, nome) // O Kotlin chama de 'nome', mas o SQL salva em 'model'
                 stmt.setString(2, placa)
-                stmt.setInt(3, id)
-                stmt.setInt(4, customerId)
-                
+                stmt.setString(3, brand)
+                stmt.setString(4, color)
+                stmt.setString(5, vehicleType)
+                stmt.setString(6, foto)
+                stmt.setInt(7, id)
+                stmt.setInt(8, customerId)
                 stmt.executeUpdate() > 0
             }
         }

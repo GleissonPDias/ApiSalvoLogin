@@ -136,6 +136,7 @@ fun Route.veiculoRoutes() {
             val marca = dados["brand"] ?: "Não informada"        // 🚀 Pega do Android
             val cor = dados["color"] ?: "Não informada"          // 🚀 Pega do Android
             val tipo = dados["vehicle_type"] ?: "Carro"          // 🚀 Pega do Android
+            val foto = dados["vehicle_photo"]
 
             if (customerId == null || nome.isNullOrBlank() || placa.isNullOrBlank()) {
                 call.respond(HttpStatusCode.BadRequest, mapOf("sucesso" to false, "mensagem" to "Campos obrigatórios ausentes"))
@@ -143,7 +144,7 @@ fun Route.veiculoRoutes() {
             }
 
             // Repassa os novos valores para a função do banco
-            adicionarVeiculoClienteNoBanco(customerId, nome, placa, marca, cor, tipo)
+            adicionarVeiculoClienteNoBanco(customerId, nome, placa, marca, cor, tipo, foto)
 
             call.respond(HttpStatusCode.Created, mapOf("sucesso" to true, "mensagem" to "Veículo do cliente cadastrado!"))
         } catch (e: Exception) {
@@ -159,6 +160,9 @@ fun Route.veiculoRoutes() {
             val customerId = dados["customer_id"]?.toIntOrNull()
             val nome = dados["name"]
             val placa = dados["plate"]
+            val brand = dados["brand"]
+            val color = dados["color"]
+            val vehicleType = dados["vehicle_type"]
             val foto = dados["vehicle_photo"]
 
             if (id == null || customerId == null || nome.isNullOrBlank() || placa.isNullOrBlank()) {
@@ -166,7 +170,7 @@ fun Route.veiculoRoutes() {
                 return@put
             }
 
-            val sucesso = atualizarDadosVeiculoClienteNoBanco(id, customerId, nome, placa, foto)
+            val sucesso = atualizarDadosVeiculoClienteNoBanco(id, customerId, nome, placa, brand, color, vehicleType, foto)
 
             if (sucesso) {
                 call.respond(HttpStatusCode.OK, mapOf("sucesso" to true, "mensagem" to "Veículo do cliente atualizado!"))
